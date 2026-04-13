@@ -19,6 +19,7 @@
 #include "ocudu/ran/radio_link_monitoring.h"
 #include "ocudu/ran/resource_allocation/vrb_to_prb.h"
 #include "ocudu/ran/serv_cell_index.h"
+#include "ocudu/ran/sps/cg_configuration.h"
 #include "ocudu/ran/srs/srs_configuration.h"
 #include "ocudu/ran/tci.h"
 #include "ocudu/ran/time_alignment_config.h"
@@ -193,13 +194,15 @@ struct bwp_downlink {
 /// Used to configure the dedicated UE-specific parameters of an UL BWP.
 /// \remark See TS 38.331, BWP-UplinkDedicated.
 struct bwp_uplink_dedicated {
-  std::optional<pucch_config> pucch_cfg;
-  std::optional<pusch_config> pusch_cfg;
-  std::optional<srs_config>   srs_cfg;
+  std::optional<pucch_config>     pucch_cfg;
+  std::optional<pusch_config>     pusch_cfg;
+  std::optional<cg_configuration> cg_cfg;
+  std::optional<srs_config>       srs_cfg;
 
   bool operator==(const bwp_uplink_dedicated& other) const
   {
-    return pucch_cfg == other.pucch_cfg and pusch_cfg == other.pusch_cfg and srs_cfg == other.srs_cfg;
+    return pucch_cfg == other.pucch_cfg and pusch_cfg == other.pusch_cfg and srs_cfg == other.srs_cfg and
+           cg_cfg == other.cg_cfg;
   }
 };
 

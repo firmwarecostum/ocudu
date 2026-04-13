@@ -1,0 +1,49 @@
+// SPDX-FileCopyrightText: Copyright (C) 2021-2026 Software Radio Systems Limited
+// SPDX-License-Identifier: BSD-3-Clause-Open-MPI
+// Portions of this file may implement 3GPP specifications, which may be subject to additional licensing requirements.
+
+#pragma once
+
+#include "../config/cell_configuration.h"
+#include "../ue_context/ue_repository.h"
+#include "configured_grant_scheduler.h"
+#include "ocudu/adt/static_vector.h"
+#include "ocudu/ocudulog/ocudulog.h"
+#include "ocudu/ran/rnti.h"
+
+namespace ocudu {
+
+class configured_grant_scheduler_impl : public configured_grant_scheduler
+{
+public:
+  explicit configured_grant_scheduler_impl(const cell_configuration& cell_cfg_, ue_repository& ues_);
+
+  void run_slot(cell_resource_allocator& res_alloc) override;
+
+  void add_ue(const ue_cell_configuration& ue_cfg) override;
+
+  void rem_ue(const ue_cell_configuration& ue_cfg) override;
+
+  void reconf_ue(const ue_cell_configuration& new_ue_cfg, const ue_cell_configuration& old_ue_cfg) override;
+
+private:
+  // Helper to fetch a UE cell config by RNTI.
+  const ue_cell_configuration* get_ue_cfg(rnti_t rnti) const;
+
+  // Adds a UE's CG grant positions to the slot wheel. Used by add_ue() and reconf_ue().
+  void add_ue_to_wheel(const ue_cell_configuration& ue_cfg);
+
+  const cell_configuration& cell_cfg;
+  ue_repository&            ues;
+  ocudulog::basic_logger&   logger;
+
+  // Maximum CG periodicity in slots: sym5120x14 = 5120 slots (normal CP, 14 symbols/slot).
+  static constexpr unsigned max_cg_slot_periodicity = 5120U;
+
+  // Storage of the periodic CG PUSCH opportunities to be scheduled in the resource grid. Each position of the vector
+  // represents a slot in a ring-like structure (i.e. slot % max_cg_slot_periodicity). Each of these vector
+  // indexes/slots contains a list of RNTIs with a CG grant due in that slot.
+  std::vector<static_vector<rnti_t, MAX_PUSCH_PDUS_PER_SLOT>> periodic_pusch_slot_wheel;
+};
+
+} // namespace ocudu
