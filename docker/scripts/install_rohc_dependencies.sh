@@ -34,6 +34,33 @@ install_rohc_dependencies_debian_ubuntu() {
     fi
 }
 
+install_rohc_dependencies_fedora() {
+    local mode="${1:?}"
+    local -a pkgs=()
+
+    local -a build_pkgs=(
+        curl ca-certificates gcc gcc-c++ make autoconf automake libtool which
+        libpcap-devel libcmocka-devel xz
+    )
+
+    case "$mode" in
+        all|build)
+            pkgs+=( "${build_pkgs[@]}" )
+            ;;
+        run)
+            ;;
+        *)
+            echo >&2 "Unsupported mode: $mode"
+            exit 1
+            ;;
+    esac
+
+    if ((${#pkgs[@]})); then
+        dnf -y install "${pkgs[@]}"
+        dnf clean all
+    fi
+}
+
 main() {
 
     if [ $# != 0 ] && [ $# != 1 ]; then
@@ -51,6 +78,9 @@ main() {
     case "$ID" in
         debian|ubuntu)
             install_rohc_dependencies_debian_ubuntu "$mode"
+            ;;
+        fedora)
+            install_rohc_dependencies_fedora "$mode"
             ;;
         *)
             echo "OS $ID not supported"
