@@ -23,6 +23,8 @@ struct pusch_information {
   const bwp_configuration* bwp_cfg;
   vrb_alloc                rbs;
   ofdm_symbol_range        symbols;
+  /// \brief True is this is a PUSCH with Configured Grant.
+  bool is_cg;
   /// \brief For resource allocation type 1, it indicates if intra-slot frequency hopping is enabled, as per TS38.212
   /// Section 7.3.1.1.
   bool intra_slot_freq_hopping;
@@ -108,7 +110,7 @@ struct ul_sched_info {
   pusch_information       pusch_cfg;
   std::optional<uci_info> uci;
 
-  /// \brief Information relative to a PDSCH allocation decision that is used for the purpose of logging or
+  /// \brief Information relative to a PUSCH allocation decision that is used for the purpose of logging or
   /// tracing, but not passed to the PHY.
   struct decision_context {
     du_ue_index_t   ue_index;

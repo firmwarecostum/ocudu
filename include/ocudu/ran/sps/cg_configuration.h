@@ -134,9 +134,9 @@ struct cg_configuration {
     uint16_t time_domain_offset;
     /// Index into the PUSCH time-domain resource allocation table. Values {0,...,15}.
     uint8_t time_domain_allocation;
-    /// Frequency domain resource assignment as an 18-bit bitmap.
-    /// \remark See TS 38.212, clause 7.3.1.1.2 for the bit-field definition.
-    bounded_bitset<18> freq_domain_allocation;
+    /// VRBs for this configured grant, which map to "Frequency domain resource assignment", as per TS 38.212,
+    /// Section 7.3.1.1.2 for the bit-field definition.
+    vrb_interval vrbs;
     /// DMRS antenna port index and associated parameters. Values {0,...,31}.
     uint8_t antenna_port;
     /// DMRS sequence initialization value. Values {0,...,1}.
@@ -145,8 +145,8 @@ struct cg_configuration {
     uint8_t precoding_and_nof_layers;
     /// SRS resource indicator index for non-codebook-based transmission. Values {0,...,15}.
     std::optional<uint8_t> srs_resource_indicator;
-    /// Joint encoding of MCS and TBS. Values {0,...,31}.
-    uint8_t mcs_and_tbs;
+    /// MCS for this Configured Grant. Values {0,...,31}.
+    uint8_t mcs;
     /// Frequency hopping offset in PRBs. Values {1,...,274}.
     /// \remark See TS 38.214, clause 6.3.
     std::optional<uint16_t> frequency_hopping_offset;
@@ -156,10 +156,10 @@ struct cg_configuration {
     bool operator==(const rrc_configured_ul_grant& rhs) const
     {
       return time_domain_offset == rhs.time_domain_offset && time_domain_allocation == rhs.time_domain_allocation &&
-             freq_domain_allocation == rhs.freq_domain_allocation && antenna_port == rhs.antenna_port &&
+             vrbs == rhs.vrbs && antenna_port == rhs.antenna_port &&
              dmrs_seq_initialization == rhs.dmrs_seq_initialization &&
              precoding_and_nof_layers == rhs.precoding_and_nof_layers &&
-             srs_resource_indicator == rhs.srs_resource_indicator && mcs_and_tbs == rhs.mcs_and_tbs &&
+             srs_resource_indicator == rhs.srs_resource_indicator && mcs == rhs.mcs &&
              frequency_hopping_offset == rhs.frequency_hopping_offset && pathloss_ref_index == rhs.pathloss_ref_index;
     }
     bool operator!=(const rrc_configured_ul_grant& rhs) const { return !(rhs == *this); }
