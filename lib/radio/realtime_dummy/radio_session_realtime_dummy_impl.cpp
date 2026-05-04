@@ -19,8 +19,8 @@ radio_session_realtime_dummy_impl::radio_session_realtime_dummy_impl(const radio
 
   sampling_rate_hz = config.sampling_rate_Hz;
 
-  // Set the emulated TX and RX buffer sizes to hold 1 ms of baseband signal.
-  max_nof_buffered_rx_samples = static_cast<uint64_t>(sampling_rate_hz / 1000);
+  // Set the emulated TX and RX buffer sizes to hold 10 ms of baseband signal.
+  max_nof_buffered_rx_samples = static_cast<uint64_t>(sampling_rate_hz / 100);
   max_nof_buffered_tx_samples = max_nof_buffered_rx_samples;
 
   next_transmit_timestamp = 0;
@@ -47,6 +47,9 @@ baseband_gateway_timestamp radio_session_realtime_dummy_impl::read_current_time(
 
 void radio_session_realtime_dummy_impl::start(baseband_gateway_timestamp init_time)
 {
+  // Reset the stop control. This will block if there is an earlier stop request that has not been completed.
+  stop_control.reset();
+
   // Set the next timestamp for the RX samples.
   next_receive_timestamp        = init_time;
   bool expected_start_requested = false;
@@ -55,7 +58,11 @@ void radio_session_realtime_dummy_impl::start(baseband_gateway_timestamp init_ti
   }
 }
 
-void radio_session_realtime_dummy_impl::stop() {}
+void radio_session_realtime_dummy_impl::stop()
+{
+  // Request the radio to stop.
+  stop_control.stop();
+}
 
 bool radio_session_realtime_dummy_impl::set_tx_gain(unsigned port_id, double gain_dB)
 {
@@ -128,6 +135,11 @@ baseband_gateway_receiver::metadata radio_session_realtime_dummy_impl::receive(b
 void radio_session_realtime_dummy_impl::transmit(const baseband_gateway_buffer_reader&        data,
                                                  const baseband_gateway_transmitter_metadata& md)
 {
+  auto token = stop_control.get_token();
+  if (OCUDU_UNLIKELY(token.is_stop_requested())) {
+    return;
+  }
+
   baseband_gateway_timestamp first_requested_sample_ts = md.ts;
   unsigned                   nof_requested_samples     = data.get_nof_samples();
 

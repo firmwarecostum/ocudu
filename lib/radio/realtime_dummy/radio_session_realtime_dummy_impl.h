@@ -8,6 +8,7 @@
 #include "ocudu/gateways/baseband/buffer/baseband_gateway_buffer_dynamic.h"
 #include "ocudu/radio/radio_session.h"
 #include "ocudu/support/executors/task_executor.h"
+#include "ocudu/support/synchronization/stop_event.h"
 
 namespace ocudu {
 
@@ -62,7 +63,7 @@ public:
   unsigned get_transmitter_optimal_buffer_size() const override { return 0; }
 
   // See the baseband_gateway interface for documentation.
-  unsigned get_receiver_optimal_buffer_size() const override { return 0; }
+  unsigned get_receiver_optimal_buffer_size() const override { return sampling_rate_hz / 10000; }
 
   // See the baseband_gateway interface for documentation.
   baseband_gateway_transmitter& get_transmitter() override { return *this; }
@@ -111,6 +112,9 @@ private:
   double sampling_rate_hz;
 
   std::atomic<bool> start_requested;
+
+  /// Stop control.
+  rt_stop_event_source stop_control;
 
   /// \brief Derives the current RF timestamp, based on the system time and the epoch of timestamp 0.
   ///
