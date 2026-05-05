@@ -169,12 +169,12 @@ struct cg_configuration {
   freq_hopping frequency_hopping;
   /// DMRS configuration for CG PUSCH transmissions.
   dmrs_uplink_config cg_dmrs_cfg;
-  /// MCS table override for CP-OFDM CG transmissions. When absent, the table configured in PUSCH-Config applies.
-  /// \remark Only {qam256, qam64LowSe} are valid overrides; qam64 is the default and not signalled here.
-  std::optional<pusch_mcs_table> mcs_table;
-  ///  If set, enables transform precoding and sets MCS table to use for it.
-  /// PUSCH-Config applies.
-  // TODO: Check if we need transform precoding is used in RACH-ConfigCommon and, if so, adapt it to that.
+  /// MCS table override for CP-OFDM CG transmissions.
+  pusch_mcs_table mcs_table;
+  /// Enables/disables transform precoder for CG.
+  /// If not set, \c msg3-transformPrecoder in \c RACH-ConfigCommon applies.
+  std::optional<bool> trans_precoder;
+  /// Defines the MCS table to be used with transform precoder.
   pusch_mcs_table mcs_table_transform_precoder;
   /// UCI-on-PUSCH beta offset configuration. When absent, the UE does not multiplex UCI on CG PUSCH.
   std::optional<cg_uci_on_pusch> uci_on_pusch_cfg;
@@ -202,7 +202,7 @@ struct cg_configuration {
   bool operator==(const cg_configuration& rhs) const
   {
     return frequency_hopping == rhs.frequency_hopping && cg_dmrs_cfg == rhs.cg_dmrs_cfg && mcs_table == rhs.mcs_table &&
-           mcs_table_transform_precoder == rhs.mcs_table_transform_precoder &&
+           trans_precoder == rhs.trans_precoder && mcs_table_transform_precoder == rhs.mcs_table_transform_precoder &&
            uci_on_pusch_cfg == rhs.uci_on_pusch_cfg && res_alloc == rhs.res_alloc &&
            enable_rbg_size_cfg_2 == rhs.enable_rbg_size_cfg_2 &&
            enable_pwr_ctrl_loop_n1 == rhs.enable_pwr_ctrl_loop_n1 && p0_pusch_alpha == rhs.p0_pusch_alpha &&

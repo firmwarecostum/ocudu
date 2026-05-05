@@ -13,6 +13,8 @@
 
 namespace ocudu {
 
+struct cell_slot_resource_allocator;
+
 class configured_grant_scheduler_impl : public configured_grant_scheduler
 {
 public:
@@ -32,6 +34,12 @@ private:
 
   // Adds a UE's CG grant positions to the slot wheel. Used by add_ue() and reconf_ue().
   void add_ue_to_wheel(const ue_cell_configuration& ue_cfg);
+
+  // Processes all CG PUSCH opportunities for the given slot.
+  void allocate_slot_cg_opportunities(cell_slot_resource_allocator& slot_alloc);
+
+  // Allocates a single CG PUSCH opportunity for the given RNTI.
+  bool allocate_cg_opportunity(cell_slot_resource_allocator& slot_alloc, rnti_t rnti);
 
   const cell_configuration& cell_cfg;
   ue_repository&            ues;
