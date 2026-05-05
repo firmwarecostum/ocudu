@@ -19,11 +19,14 @@ using namespace ocuup;
 static void assert_cu_up_dependencies_valid(const cu_up_dependencies& dependencies)
 {
   ocudu_assert(dependencies.exec_mapper != nullptr, "Invalid CU-UP UE executor pool");
-  ocudu_assert(dependencies.e1_conn_client != nullptr, "Invalid E1 connection client");
+  ocudu_assert(not dependencies.e1_conn_clients.empty(), "Invalid E1 connection client");
   ocudu_assert(dependencies.f1u_gateway != nullptr, "Invalid F1-U connector");
   ocudu_assert(not dependencies.ngu_gws.empty(), "Invalid N3 gateway list");
   for (auto* gw : dependencies.ngu_gws) {
     ocudu_assert(gw != nullptr, "Invalid N3 gateway");
+  }
+  for (auto* e1 : dependencies.e1_conn_clients) {
+    ocudu_assert(e1 != nullptr, "Invalid E1 gateway");
   }
   ocudu_assert(dependencies.gtpu_pcap != nullptr, "Invalid GTP-U pcap");
 }
@@ -131,7 +134,7 @@ cu_up::cu_up(const cu_up_config& config_, const cu_up_dependencies& dependencies
 
   /// > Create e1ap
   e1ap = create_e1ap(cfg.e1ap,
-                     *dependencies.e1_conn_client,
+                     *dependencies.e1_conn_clients[0], // TODO, create multiple E1APs
                      e1ap_cu_up_mng_adapter,
                      *dependencies.timers,
                      dependencies.exec_mapper->ctrl_executor());
