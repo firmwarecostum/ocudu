@@ -64,8 +64,8 @@ generate_cu_up_manager_impl_dependencies(std::atomic<bool>&         stop_command
           main_ctrl_loop};
 }
 
-cu_up::cu_up(const cu_up_config& config_, const cu_up_dependencies& dependencies) :
-  cfg(config_),
+cu_up::cu_up(const cu_up_config& cfg_, const cu_up_dependencies& dependencies) :
+  cfg(cfg_),
   ctrl_executor(dependencies.exec_mapper->ctrl_executor()),
   timers(*dependencies.timers),
   e1_setup_notifier(dependencies.e1_setup_notifier),
@@ -132,21 +132,23 @@ cu_up::cu_up(const cu_up_config& config_, const cu_up_dependencies& dependencies
     }
   }
 
-  /// > Create e1ap
-  e1ap = create_e1ap(cfg.e1ap,
-                     *dependencies.e1_conn_clients[0], // TODO, create multiple E1APs
-                     e1ap_cu_up_mng_adapter,
-                     *dependencies.timers,
-                     dependencies.exec_mapper->ctrl_executor());
+  /// > Create e1ap.
+  for (auto* e1_gw : dependencies.e1_conn_clients) {
+    e1ap_cu_up_mng_adapters.emplace_back();
+    e1ap_cu_up_manager_adapter&     e1ap_cu_up_mng_adapter = e1ap_cu_up_mng_adapters.back();
+    std::unique_ptr<e1ap_interface> e1ap                   = create_e1ap(
+        cfg.e1ap, *e1_gw, e1ap_cu_up_mng_adapter, *dependencies.timers, dependencies.exec_mapper->ctrl_executor());
+    e1aps.push_back(std::move(e1ap));
+  }
 
   /// > Create CU-UP manager
   cu_up_mng = std::make_unique<cu_up_manager_impl>(
       generate_cu_up_manager_impl_config(cfg),
       generate_cu_up_manager_impl_dependencies(
-          stop_command, dependencies, *e1ap, *ngu_demux, *ngu_session_mngr, *n3_teid_allocator, main_ctrl_loop));
+          stop_command, dependencies, *e1aps[0], *ngu_demux, *ngu_session_mngr, *n3_teid_allocator, main_ctrl_loop));
 
-  /// > Connect E1AP to CU-UP manager
-  e1ap_cu_up_mng_adapter.connect_cu_up_manager(*cu_up_mng);
+  /// > Connect E1AP(s) to CU-UP manager.
+  e1ap_cu_up_mng_adapters[0].connect_cu_up_manager(*cu_up_mng); // TODO fix adapter.
   // Start statistics report timer
   if (cfg.statistics_report_period.count() > 0) {
     statistics_report_timer = dependencies.timers->create_unique_timer(dependencies.exec_mapper->ctrl_executor());
@@ -176,13 +178,21 @@ void cu_up::start()
 
   bool connected = false;
   if (not ctrl_executor.execute([this, &p, &connected]() {
-        main_ctrl_loop.schedule([this, &p, &connected](coro_context<async_task<void>>& ctx) {
+        main_ctrl_loop.schedule([this, &p, &connected, e1ap_ifs = std::vector<e1ap_connection_manager*>{}](
+                                    coro_context<async_task<void>>& ctx) mutable {
           CORO_BEGIN(ctx);
 
-          // Connect to CU-CP and send E1 Setup Request and await for E1 setup response.
+          // Prepare E1AP interfaces.
+          e1ap_ifs.reserve(e1aps.size());
+          for (auto& e1ap : e1aps) {
+            e1ap_ifs.push_back(e1ap.get());
+          }
+
+          // Connect and send E1 Setup Request to all CU-CP(s) and await for
+          // E1 setup response(s).
           CORO_AWAIT_VALUE(
               connected,
-              launch_async<cu_up_setup_routine>(cfg.cu_up_id, cfg.cu_up_name, cfg.plmn, *e1ap, e1_setup_notifier));
+              launch_async<cu_up_setup_routine>(cfg.cu_up_id, cfg.cu_up_name, cfg.plmn, e1ap_ifs, e1_setup_notifier));
 
           if (cfg.test_mode_cfg.enabled) {
             logger.info("enabling test mode...");
@@ -220,32 +230,35 @@ void cu_up::stop()
 
   auto stop_cu_up_main_loop = [this, &cvar]() mutable {
     // Dispatch coroutine to stop CU-UP.
-    main_ctrl_loop.schedule(launch_async([this, &cvar](coro_context<async_task<void>>& ctx) mutable {
-      CORO_BEGIN(ctx);
+    main_ctrl_loop.schedule(
+        launch_async([this, &cvar, e1ap = e1aps.end()](coro_context<async_task<void>>& ctx) mutable {
+          CORO_BEGIN(ctx);
 
-      if (not running) {
-        // Already stopped.
-        CORO_EARLY_RETURN();
-      }
+          if (not running) {
+            // Already stopped.
+            CORO_EARLY_RETURN();
+          }
 
-      // Run E1 Release Procedure.
-      CORO_AWAIT(e1ap->handle_cu_up_e1ap_release_request());
+          // Run E1 Release Procedure.
+          for (e1ap = e1aps.begin(); e1ap != e1aps.end(); ++e1ap) {
+            CORO_AWAIT((*e1ap)->handle_cu_up_e1ap_release_request());
+          }
 
-      // CU-UP stops listening to new GTPU Rx PDUs and stops pushing UL PDUs.
-      CORO_AWAIT(handle_stop_command());
+          // CU-UP stops listening to new GTPU Rx PDUs and stops pushing UL PDUs.
+          CORO_AWAIT(handle_stop_command());
 
-      // We defer main ctrl loop stop to let the current coroutine complete successfully.
-      defer_until_success(ctrl_executor, timers, [this, &cvar]() {
-        // Stop main control loop and communicate back with the caller thread.
-        auto main_loop = main_ctrl_loop.request_stop();
+          // We defer main ctrl loop stop to let the current coroutine complete successfully.
+          defer_until_success(ctrl_executor, timers, [this, &cvar]() {
+            // Stop main control loop and communicate back with the caller thread.
+            auto main_loop = main_ctrl_loop.request_stop();
 
-        std::lock_guard<std::mutex> lock2(mutex);
-        running = false;
-        cvar.notify_all();
-      });
+            std::lock_guard<std::mutex> lock2(mutex);
+            running = false;
+            cvar.notify_all();
+          });
 
-      CORO_RETURN();
-    }));
+          CORO_RETURN();
+        }));
   };
 
   // Dispatch task to stop CU-UP main loop.
@@ -268,7 +281,10 @@ async_task<void> cu_up::handle_stop_command()
 
   gtpu_gw_adapter.disconnect();
 
-  e1ap_cu_up_mng_adapter.disconnect();
+  for (auto& e1ap_cu_up_mng_adapter : e1ap_cu_up_mng_adapters) {
+    e1ap_cu_up_mng_adapter.disconnect();
+  }
+
   // Do not disconnect GTP-U Demux as it is being concurrently accessed from the thread pool.
   // It will be safely stopped from inside the CU-UP manager.
 
@@ -285,7 +301,8 @@ async_task<void> cu_up::handle_stop_command()
 void cu_up::on_statistics_report_timer_expired()
 {
   // Log statistics
-  logger.debug("num_e1ap_ues={} num_cu_up_ues={}", e1ap->get_nof_ues(), cu_up_mng->get_nof_ues());
+  logger.debug(
+      "num_e1ap_ues={} num_cu_up_ues={}", e1aps[0]->get_nof_ues(), cu_up_mng->get_nof_ues()); // TODO: Sum all E1AP UEs.
 
   // Restart timer
   statistics_report_timer.set(cfg.statistics_report_period,

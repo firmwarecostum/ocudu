@@ -52,7 +52,7 @@ static void configure_cli11_e1ap_list_args(CLI::App& app, ocuup::e1ap_list_appco
       subapp.parse_from_stream(ss);
     }
   };
-  add_option_cell(app, "gateways", sock_lambda, "Configures UDP/IP socket parameters of the F1-U interface");
+  add_option_cell(app, "gateways", sock_lambda, "Configures E1 socket parameters of the E1 interface");
 }
 
 void ocudu::configure_cli11_with_cu_appconfig_schema(CLI::App& app, cu_up_appconfig& cu_up_cfg)

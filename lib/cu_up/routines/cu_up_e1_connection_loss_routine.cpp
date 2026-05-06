@@ -35,11 +35,15 @@ void cu_up_e1_connection_loss_routine::operator()(coro_context<async_task<void>>
 
   logger.debug("\"{}\" initialized.", name());
 
+  // TODO: remove only bearer contexts for this E1.
   CORO_AWAIT(ue_mng.remove_all_ues());
 
+  // Find E1 that was lost.
   // Attempt a new E1 setup connection.
   for (;;) {
-    CORO_AWAIT_VALUE(reconnected, launch_async<cu_up_setup_routine>(cu_up_id, cu_up_name, plmn, e1ap_conn_mng));
+    CORO_AWAIT_VALUE(reconnected,
+                     launch_async<cu_up_setup_routine>(
+                         cu_up_id, cu_up_name, plmn, std::vector<e1ap_connection_manager*>{&e1ap_conn_mng}));
     if (reconnected || stop_command) {
       break;
     }

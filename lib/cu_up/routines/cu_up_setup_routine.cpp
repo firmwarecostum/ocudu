@@ -10,15 +10,15 @@
 using namespace ocudu;
 using namespace ocuup;
 
-cu_up_setup_routine::cu_up_setup_routine(gnb_cu_up_id_t                    cu_up_id_,
-                                         std::string                       cu_up_name_,
-                                         std::string                       plmn_,
-                                         e1ap_connection_manager&          e1ap_conn_mng_,
-                                         cu_up_e1_setup_complete_notifier* e1_setup_notifier_) :
+cu_up_setup_routine::cu_up_setup_routine(gnb_cu_up_id_t                        cu_up_id_,
+                                         std::string                           cu_up_name_,
+                                         std::string                           plmn_,
+                                         std::vector<e1ap_connection_manager*> e1ap_conn_mngs_,
+                                         cu_up_e1_setup_complete_notifier*     e1_setup_notifier_) :
   cu_up_id(cu_up_id_),
   cu_up_name(std::move(cu_up_name_)),
   plmn(std::move(plmn_)),
-  e1ap_conn_mng(e1ap_conn_mng_),
+  e1ap_conn_mngs(std::move(e1ap_conn_mngs_)),
   e1_setup_notifier(e1_setup_notifier_),
   logger(ocudulog::fetch_basic_logger("CU-UP"))
 {
@@ -30,16 +30,19 @@ void cu_up_setup_routine::operator()(coro_context<async_task<bool>>& ctx)
 
   logger.debug("cu-up={}: \"{}\" initialized.", cu_up_id, name());
 
-  // Connect to CU-CP.
-  if (not e1ap_conn_mng.connect_to_cu_cp()) {
-    CORO_EARLY_RETURN(false);
+  // Connect to CU-CP(s).
+  // TODO this call should not be blocking.
+  for (e1ap_conn_mng = e1ap_conn_mngs.begin(); e1ap_conn_mng != e1ap_conn_mngs.end(); ++e1ap_conn_mng) {
+    if (not(*e1ap_conn_mng)->connect_to_cu_cp()) {
+      CORO_EARLY_RETURN(false);
+    }
+
+    // Initiate E1 Setup.
+    CORO_AWAIT_VALUE(response_msg, start_cu_up_e1_setup_request());
+
+    // Handle E1 setup result.
+    handle_cu_up_e1_setup_response(response_msg);
   }
-
-  // Initiate E1 Setup.
-  CORO_AWAIT_VALUE(response_msg, start_cu_up_e1_setup_request());
-
-  // Handle E1 setup result.
-  handle_cu_up_e1_setup_response(response_msg);
 
   // Notify successful setup and deliver packed E1 setup PDU bytes via notifier.
   if (e1_setup_notifier != nullptr) {
@@ -68,7 +71,7 @@ async_task<cu_up_e1_setup_response> cu_up_setup_routine::start_cu_up_e1_setup_re
   request_msg.supported_plmns.push_back(plmn_item);
 
   // Initiate E1 Setup Request.
-  return e1ap_conn_mng.handle_cu_up_e1_setup_request(request_msg);
+  return (*e1ap_conn_mng)->handle_cu_up_e1_setup_request(request_msg);
 }
 
 void cu_up_setup_routine::handle_cu_up_e1_setup_response(const cu_up_e1_setup_response& resp)

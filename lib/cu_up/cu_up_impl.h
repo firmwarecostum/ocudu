@@ -8,7 +8,7 @@
 #include "adapters/gtpu_adapters.h"
 #include "adapters/gw_adapters.h"
 #include "ngu_session_manager.h"
-#include "ue_manager.h"
+#include "ue_context.h"
 #include "ocudu/cu_up/cu_up.h"
 #include "ocudu/cu_up/cu_up_config.h"
 #include "ocudu/cu_up/cu_up_manager.h"
@@ -60,7 +60,7 @@ private:
 
   // Components
   std::atomic<bool>                                  e1ap_connected = {false};
-  std::unique_ptr<e1ap_interface>                    e1ap;
+  std::vector<std::unique_ptr<e1ap_interface>>       e1aps;
   std::unique_ptr<ngu_session_manager>               ngu_session_mngr;
   std::vector<std::unique_ptr<gtpu_tnl_pdu_session>> ngu_sessions;
   std::unique_ptr<gtpu_demux>                        ngu_demux;
@@ -71,7 +71,7 @@ private:
   // Adapters
   network_gateway_data_gtpu_demux_adapter gw_data_gtpu_demux_adapter;
   gtpu_network_gateway_adapter            gtpu_gw_adapter;
-  e1ap_cu_up_manager_adapter              e1ap_cu_up_mng_adapter;
+  std::vector<e1ap_cu_up_manager_adapter> e1ap_cu_up_mng_adapters;
 
   std::mutex        mutex;
   bool              running{false};
