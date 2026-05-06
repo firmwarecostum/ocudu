@@ -181,7 +181,8 @@ protected:
   dl_msg_alloc           ue_pdsch;
   pusch_information      pusch_info;
   dl_harq_process_handle h_dl{harq_ent.alloc_dl_harq(current_slot, k1 + ntn_cs_koffset, max_retxs, 0).value()};
-  ul_harq_process_handle h_ul{harq_ent.alloc_ul_harq(current_slot + k2 + ntn_cs_koffset, max_retxs).value()};
+  ul_harq_process_handle h_ul{
+      harq_ent.alloc_ul_harq(current_slot + k2 + ntn_cs_koffset, max_retxs, std::nullopt).value()};
 };
 
 // In this test suite, we test the scenario where 5 HARQ bits arrive in a single PUCCH PDU to the scheduler.
@@ -209,8 +210,8 @@ public:
     harq_ul_mode_mask ul_harq_mode_mask(MAX_NOF_HARQS);
     ul_harq_mode_mask.fill(false);
     ul_harq_mode_mask.fill(0, nof_normal_mode_harqs, true);
-    harq_ent.reconfigure(nof_harqs, nof_harqs, dl_feedback_disabled, ul_harq_mode_mask);
-    h_ul = harq_ent.alloc_ul_harq(current_slot + k2 + ntn_cs_koffset, max_retxs, false).value();
+    harq_ent.reconfigure(nof_harqs, nof_harqs, dl_feedback_disabled, ul_harq_mode_mask, 0);
+    h_ul = harq_ent.alloc_ul_harq(current_slot + k2 + ntn_cs_koffset, max_retxs, std::nullopt, false).value();
     ul_harq_alloc_context ul_harq_ctxt{dci_ul_rnti_config_type::c_rnti_f0_0};
     pusch_info.harq_id = h_ul.id();
     h_ul.save_grant_params(ul_harq_ctxt, pusch_info);
@@ -232,7 +233,8 @@ public:
     dl_feedback_disabled.fill(0, nof_normal_mode_harqs, false);
     harq_ul_mode_mask ul_harq_mode_mask(MAX_NOF_HARQS);
     ul_harq_mode_mask.fill(true);
-    harq_ent.reconfigure(nof_harqs, nof_harqs, dl_feedback_disabled, ul_harq_mode_mask);
+    constexpr unsigned nof_cg_reserved_harq = 0;
+    harq_ent.reconfigure(nof_harqs, nof_harqs, dl_feedback_disabled, ul_harq_mode_mask, nof_cg_reserved_harq);
     h_dl = harq_ent.alloc_dl_harq(current_slot, k1 + ntn_cs_koffset, max_retxs, 0, false).value();
     dl_harq_alloc_context harq_ctxt{dci_dl_rnti_config_type::c_rnti_f1_0};
     ue_pdsch.pdsch_cfg.harq_id = h_dl.id();
@@ -360,7 +362,7 @@ TEST_F(single_harq_process_test, when_newtx_after_ack_then_ndi_flips)
   ASSERT_GE(h_ul.ul_crc_info(true).value().value(), 0);
 
   h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0).value();
-  h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs).value();
+  h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).value();
   ASSERT_EQ(h_dl.nof_retxs(), 0);
   ASSERT_EQ(h_ul.nof_retxs(), 0);
   ASSERT_NE(dl_ndi, h_dl.ndi());
@@ -387,7 +389,7 @@ TEST_F(single_harq_process_test, when_ack_wait_timeout_reached_then_harq_is_avai
   ASSERT_FALSE(harq_ent.ul_harq(h_ul_id).has_value());
 
   h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs - 1, 0).value();
-  h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs - 1).value();
+  h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs - 1, std::nullopt).value();
   ASSERT_TRUE(h_dl.is_waiting_ack() and not h_dl.has_pending_retx());
   ASSERT_TRUE(h_ul.is_waiting_ack() and not h_ul.has_pending_retx());
   ASSERT_EQ(h_dl.nof_retxs(), 0);
@@ -450,7 +452,7 @@ TEST_F(single_ue_harq_entity_test, when_harq_entity_is_created_all_harqs_are_emp
 TEST_F(single_ue_harq_entity_test, when_harq_is_allocated_then_harq_entity_finds_harq_in_waiting_ack_state)
 {
   auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl.has_value());
   ASSERT_TRUE(h_ul.has_value());
   ASSERT_EQ(harq_ent.find_dl_harq_waiting_ack(), h_dl);
@@ -462,7 +464,7 @@ TEST_F(single_ue_harq_entity_test, when_harq_is_allocated_then_harq_entity_finds
 TEST_F(single_ue_harq_entity_test, when_harq_is_nacked_then_harq_entity_finds_harq_with_pending_retx)
 {
   auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl.value().dl_ack_info(mac_harq_ack_report_status::nack, 5));
   ASSERT_EQ(h_ul.value().ul_crc_info(false), units::bytes{0});
   ASSERT_EQ(harq_ent.find_dl_harq_waiting_ack(), std::nullopt);
@@ -478,7 +480,7 @@ TEST_F(single_ue_harq_entity_test, when_all_harqs_are_allocated_harq_entity_cann
 
   for (unsigned i = 0; i != nof_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_dl.value().is_waiting_ack());
     ASSERT_TRUE(h_ul.has_value());
@@ -493,7 +495,7 @@ TEST_F(single_ue_harq_entity_test, when_all_harqs_are_allocated_harq_entity_cann
   ASSERT_FALSE(harq_ent.has_empty_ul_harqs());
 
   auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+  auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
   ASSERT_FALSE(h_dl.has_value());
   ASSERT_FALSE(h_ul.has_value());
 }
@@ -502,7 +504,7 @@ TEST_F(single_ue_harq_entity_test, when_ue_harq_entity_is_deallocated_then_harq_
 {
   for (unsigned i = 0; i != nof_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -511,7 +513,7 @@ TEST_F(single_ue_harq_entity_test, when_ue_harq_entity_is_deallocated_then_harq_
   harq_ent = cell_harqs.add_ue(ue_index, rnti, nof_harqs, nof_harqs);
   for (unsigned i = 0; i != nof_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -520,7 +522,7 @@ TEST_F(single_ue_harq_entity_test, when_ue_harq_entity_is_deallocated_then_harq_
 TEST_F(single_ue_harq_entity_test, when_max_retxs_reached_then_harq_entity_does_not_find_pending_retx)
 {
   auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+  auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl.has_value());
   ASSERT_TRUE(h_ul.has_value());
   for (unsigned i = 0; i != max_retxs; ++i) {
@@ -554,7 +556,7 @@ TEST_F(single_ue_harq_entity_test, after_max_ack_wait_timeout_dl_harqs_are_avail
   k2 = 4;
   for (unsigned i = 0; i != nof_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -576,7 +578,7 @@ TEST_F(single_ue_harq_entity_test, after_max_ack_wait_timeout_dl_harqs_are_avail
   ASSERT_TRUE(harq_ent.has_empty_ul_harqs());
   for (unsigned i = 0; i != nof_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -687,8 +689,8 @@ TEST_F(multi_ue_harq_manager_test, when_harq_entities_are_nacked_then_they_appea
 
   auto h_dl1 = harq_ent1.alloc_dl_harq(current_slot, k1, max_retxs, 0);
   auto h_dl2 = harq_ent2.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul1 = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs);
-  auto h_ul2 = harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs);
+  auto h_ul1 = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
+  auto h_ul2 = harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl1.has_value() and h_dl2.has_value() and h_ul1.has_value() and h_ul2.has_value());
 
   ASSERT_TRUE(cell_harqs.pending_dl_retxs().empty());
@@ -742,9 +744,9 @@ TEST_F(multi_ue_harq_manager_test, pending_harq_retxs_are_ordered_from_oldest_to
   unique_ue_harq_entity harq_ent2 = cell_harqs.add_ue(to_du_ue_index(2), to_rnti(0x4602), nof_harqs, nof_harqs);
 
   ASSERT_TRUE(harq_ent1.alloc_dl_harq(current_slot, k1, max_retxs, 0).has_value());
-  ASSERT_TRUE(harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs).has_value());
+  ASSERT_TRUE(harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).has_value());
   ASSERT_TRUE(harq_ent2.alloc_dl_harq(current_slot, k1, max_retxs, 0).has_value());
-  ASSERT_TRUE(harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs).has_value());
+  ASSERT_TRUE(harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).has_value());
 
   ASSERT_TRUE(harq_ent1.find_dl_harq_waiting_ack(current_slot + k1, 0)
                   ->dl_ack_info(mac_harq_ack_report_status::nack, std::nullopt));
@@ -774,7 +776,7 @@ TEST_F(multi_ue_harq_manager_test, when_new_tx_occur_for_different_ues_then_ndi_
   unique_ue_harq_entity harq_ent2 = cell_harqs.add_ue(to_du_ue_index(2), to_rnti(0x4602), nof_harqs, nof_harqs);
 
   auto h_dl = harq_ent1.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  auto h_ul = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs);
+  auto h_ul = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl.has_value());
   ASSERT_TRUE(h_ul.has_value());
 
@@ -785,7 +787,7 @@ TEST_F(multi_ue_harq_manager_test, when_new_tx_occur_for_different_ues_then_ndi_
   ASSERT_EQ(h_ul->ul_crc_info(true), units::bytes{0});
 
   h_dl = harq_ent2.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  h_ul = harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs);
+  h_ul = harq_ent2.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
   ASSERT_TRUE(h_dl.has_value());
   ASSERT_TRUE(h_ul.has_value());
 
@@ -796,7 +798,7 @@ TEST_F(multi_ue_harq_manager_test, when_new_tx_occur_for_different_ues_then_ndi_
   ASSERT_EQ(h_ul->ul_crc_info(true), units::bytes{0});
 
   h_dl = harq_ent1.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-  h_ul = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs);
+  h_ul = harq_ent1.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
 
   ASSERT_NE(h_dl->ndi(), ndi_dl1);
   ASSERT_NE(h_ul->ndi(), ndi_ul1);
@@ -825,8 +827,9 @@ TEST_F(harq_extension_test, when_reconfigure_with_more_harqs_then_nof_harqs_incr
   ASSERT_EQ(harq_ent.nof_ul_harqs(), init_harqs);
 
   // Extend to 32 HARQs via reconfigure.
-  const unsigned extended_harqs = 32;
-  harq_ent.reconfigure(extended_harqs, extended_harqs, {}, {});
+  constexpr unsigned extended_harqs       = 32;
+  constexpr unsigned nof_cg_reserved_harq = 0;
+  harq_ent.reconfigure(extended_harqs, extended_harqs, {}, {}, nof_cg_reserved_harq);
 
   ASSERT_EQ(harq_ent.nof_dl_harqs(), extended_harqs);
   ASSERT_EQ(harq_ent.nof_ul_harqs(), extended_harqs);
@@ -839,8 +842,9 @@ TEST_F(harq_extension_test, when_reconfigure_with_same_count_then_no_change)
   ASSERT_EQ(harq_ent.nof_dl_harqs(), init_harqs);
   ASSERT_EQ(harq_ent.nof_ul_harqs(), init_harqs);
 
+  constexpr unsigned nof_cg_reserved_harq = 0;
   // Reconfiguring with same count should not change anything.
-  harq_ent.reconfigure(init_harqs, init_harqs, {}, {});
+  harq_ent.reconfigure(init_harqs, init_harqs, {}, {}, nof_cg_reserved_harq);
 
   ASSERT_EQ(harq_ent.nof_dl_harqs(), init_harqs);
   ASSERT_EQ(harq_ent.nof_ul_harqs(), init_harqs);
@@ -853,7 +857,7 @@ TEST_F(harq_extension_test, when_reconfigure_extends_then_new_harqs_are_allocata
   // Allocate all initial HARQs.
   for (unsigned i = 0; i != init_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -862,11 +866,11 @@ TEST_F(harq_extension_test, when_reconfigure_extends_then_new_harqs_are_allocata
   ASSERT_FALSE(harq_ent.has_empty_dl_harqs());
   ASSERT_FALSE(harq_ent.has_empty_ul_harqs());
   ASSERT_FALSE(harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0).has_value());
-  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs).has_value());
+  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).has_value());
 
   // Extend to 32 HARQs via reconfigure.
   const unsigned extended_harqs = 32;
-  harq_ent.reconfigure(extended_harqs, extended_harqs, {}, {});
+  harq_ent.reconfigure(extended_harqs, extended_harqs, {}, {}, 0);
 
   // Now we should have more HARQs available.
   ASSERT_TRUE(harq_ent.has_empty_dl_harqs());
@@ -875,7 +879,7 @@ TEST_F(harq_extension_test, when_reconfigure_extends_then_new_harqs_are_allocata
   // Allocate the new HARQs (IDs 16 to 31).
   for (unsigned i = init_harqs; i != extended_harqs; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
     // New HARQs should have IDs >= init_harqs.
@@ -893,7 +897,8 @@ TEST_F(harq_extension_test, when_reconfigure_extends_asymmetrically_then_dl_and_
   unique_ue_harq_entity harq_ent = cell_harqs.add_ue(ue_index, rnti, init_harqs, init_harqs);
 
   // Extend DL to 32, UL to 24 via reconfigure.
-  harq_ent.reconfigure(32, 24, {}, {});
+  constexpr unsigned nof_cg_reserved_harq = 0;
+  harq_ent.reconfigure(32, 24, {}, {}, nof_cg_reserved_harq);
 
   ASSERT_EQ(harq_ent.nof_dl_harqs(), 32U);
   ASSERT_EQ(harq_ent.nof_ul_harqs(), 24U);
@@ -1103,7 +1108,7 @@ TEST_F(non_ntn_harq_count_test, when_non_ntn_cell_then_max_harqs_is_16)
   // Allocate all 16 HARQs.
   for (unsigned i = 0; i != MAX_NOF_HARQS_NON_NTN; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -1112,7 +1117,7 @@ TEST_F(non_ntn_harq_count_test, when_non_ntn_cell_then_max_harqs_is_16)
   ASSERT_FALSE(harq_ent.has_empty_dl_harqs());
   ASSERT_FALSE(harq_ent.has_empty_ul_harqs());
   ASSERT_FALSE(harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0).has_value());
-  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs).has_value());
+  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).has_value());
 }
 
 TEST_F(ntn_harq_count_test, when_ntn_cell_then_max_harqs_is_32)
@@ -1129,7 +1134,7 @@ TEST_F(ntn_harq_count_test, when_ntn_cell_then_max_harqs_is_32)
   // Allocate all 32 HARQs.
   for (unsigned i = 0; i != MAX_NOF_HARQS; ++i) {
     auto h_dl = harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0);
-    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs);
+    auto h_ul = harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt);
     ASSERT_TRUE(h_dl.has_value());
     ASSERT_TRUE(h_ul.has_value());
   }
@@ -1138,5 +1143,80 @@ TEST_F(ntn_harq_count_test, when_ntn_cell_then_max_harqs_is_32)
   ASSERT_FALSE(harq_ent.has_empty_dl_harqs());
   ASSERT_FALSE(harq_ent.has_empty_ul_harqs());
   ASSERT_FALSE(harq_ent.alloc_dl_harq(current_slot, k1, max_retxs, 0).has_value());
-  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs).has_value());
+  ASSERT_FALSE(harq_ent.alloc_ul_harq(current_slot + k2, max_retxs, std::nullopt).has_value());
+}
+
+// Tests for CG (Configured Grant) HARQ-ID reservation.
+// After reconfigure(nof_harqs, nof_harqs, {}, {}, nof_cg_reserved):
+//   - HARQ IDs [0, nof_cg_reserved)  are reserved for CG use (requested by harq_id argument).
+//   - HARQ IDs [nof_cg_reserved, nof_harqs) are available for regular UL scheduling (harq_id = nullopt).
+
+class cg_harq_reservation_test : public base_harq_manager_test, public ::testing::Test
+{
+protected:
+  cg_harq_reservation_test() : base_harq_manager_test(1)
+  {
+    harq_ent.reconfigure(nof_harqs, nof_harqs, {}, {}, nof_cg_reserved);
+    // NOTE: in CG, there is no concept of "k2"; in the following, k2 is used to reuse the base class test code.
+    pusch_slot = current_slot + k2;
+  }
+
+  const du_ue_index_t ue_index  = to_du_ue_index(0);
+  const rnti_t        rnti      = to_rnti(0x4601);
+  const unsigned      nof_harqs = 8;
+  // IDs 0-3 reserved for CG; IDs 4-7 for regular scheduling.
+  const unsigned        nof_cg_reserved = 4;
+  const unsigned        k2              = 6;
+  const unsigned        max_retxs       = 4;
+  slot_point            pusch_slot;
+  unique_ue_harq_entity harq_ent = cell_harqs.add_ue(ue_index, rnti, nof_harqs, nof_harqs);
+};
+
+TEST_F(cg_harq_reservation_test, when_cg_harq_id_requested_then_returns_process_with_exact_id)
+{
+  // Request a specific HARQ-ID from the CG-reserved range [0, nof_cg_reserved).
+  constexpr harq_id_t requested_id = to_harq_id(2);
+  auto                h_ul         = harq_ent.alloc_ul_harq(pusch_slot, max_retxs, requested_id);
+
+  ASSERT_TRUE(h_ul.has_value());
+  ASSERT_EQ(h_ul->id(), requested_id);
+}
+
+TEST_F(cg_harq_reservation_test, when_cg_harq_id_outside_reserved_range_then_alloc_fails)
+{
+  // Request a HARQ-ID that falls in the non-reserved range (>= nof_cg_reserved). This should be rejected.
+  const harq_id_t non_reserved_id = to_harq_id(nof_cg_reserved);
+  const auto      h_ul            = harq_ent.alloc_ul_harq(pusch_slot, max_retxs, non_reserved_id);
+
+  ASSERT_FALSE(h_ul.has_value());
+}
+
+TEST_F(cg_harq_reservation_test, when_no_harq_id_specified_then_returns_non_reserved_id)
+{
+  // Without a specific HARQ-ID, allocation must pick from the non-reserved range.
+  auto h_ul = harq_ent.alloc_ul_harq(pusch_slot, max_retxs, std::nullopt);
+
+  ASSERT_TRUE(h_ul.has_value());
+  ASSERT_GE(h_ul->id(), to_harq_id(nof_cg_reserved));
+}
+
+TEST_F(cg_harq_reservation_test, when_no_harq_id_specified_then_reserved_ids_are_never_allocated)
+{
+  // Drain all non-reserved HARQ slots via regular scheduling.
+  const unsigned nof_non_reserved = nof_harqs - nof_cg_reserved;
+  for (unsigned i = 0; i != nof_non_reserved; ++i) {
+    auto h_ul = harq_ent.alloc_ul_harq(pusch_slot, max_retxs, std::nullopt);
+    ASSERT_TRUE(h_ul.has_value());
+    ASSERT_GE(h_ul->id(), to_harq_id(nof_cg_reserved));
+  }
+
+  // Non-reserved pool is exhausted; further allocations without a specific ID must fail.
+  ASSERT_FALSE(harq_ent.alloc_ul_harq(pusch_slot, max_retxs, std::nullopt).has_value());
+
+  // Reserved IDs are still free and can be allocated individually.
+  for (unsigned id = 0; id != nof_cg_reserved; ++id) {
+    auto h_ul = harq_ent.alloc_ul_harq(pusch_slot, max_retxs, to_harq_id(id));
+    ASSERT_TRUE(h_ul.has_value());
+    ASSERT_EQ(h_ul->id(), to_harq_id(id));
+  }
 }

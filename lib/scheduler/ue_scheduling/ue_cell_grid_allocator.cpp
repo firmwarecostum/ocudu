@@ -626,7 +626,7 @@ ue_cell_grid_allocator::setup_ul_grant_builder(const slice_ue&                  
     // It is a new tx.
     h_ul =
         ue_cc.harqs
-            .alloc_ul_harq(pusch_alloc.slot, expert_cfg.max_nof_ul_harq_retxs, user.ran_slice_id() == SRB_RAN_SLICE_ID)
+            .alloc_ul_harq(pusch_alloc.slot, expert_cfg.max_nof_ul_harq_retxs, std::nullopt, user.ran_slice_id() == SRB_RAN_SLICE_ID)
             .value();
     ocudu_assert(h_ul.has_value(), "Failed to allocate UL HARQ");
   } else {

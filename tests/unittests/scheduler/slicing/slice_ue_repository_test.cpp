@@ -171,7 +171,7 @@ TEST_F(
   add_ue(ue_idx);
   const unsigned bsr_val = 1000;
   ue_db[ue_idx].handle_bsr_indication(create_short_bsr(ue_idx, ul_bsr_lcg_report_list{{lcg_id_t{1}, bsr_val}}));
-  auto                  h_ul = ue_db[ue_idx].get_pcell().harqs.alloc_ul_harq(next_slot, 4);
+  auto                  h_ul = ue_db[ue_idx].get_pcell().harqs.alloc_ul_harq(next_slot, 4, std::nullopt);
   ul_harq_alloc_context ctxt;
   ctxt.dci_cfg_type = dci_ul_rnti_config_type::c_rnti_f0_1;
   ctxt.slice_id     = DEFAULT_DRB_RAN_SLICE_ID;
