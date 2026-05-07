@@ -181,7 +181,7 @@ struct cell_harq_repository {
                                 slot_point               sl_tx,
                                 slot_point               sl_ack,
                                 unsigned                 max_nof_harq_retxs,
-                                std::optional<harq_id_t> harq_id,
+                                std::optional<harq_id_t> harq_id            = std::nullopt,
                                 bool                     select_normal_mode = true);
   void               dealloc_harq(harq_type& h);
   void               handle_ack(harq_type& h, bool ack);
@@ -478,7 +478,7 @@ private:
                                               rnti_t                   rnti,
                                               slot_point               pusch_slot,
                                               unsigned                 max_harq_nof_retxs,
-                                              std::optional<harq_id_t> harq_id,
+                                              std::optional<harq_id_t> harq_id            = std::nullopt,
                                               bool                     select_normal_mode = true);
 
   const uint8_t                          max_harqs_per_ue;
@@ -578,7 +578,7 @@ public:
                                                       bool       select_normal_mode = true);
   std::optional<ul_harq_process_handle> alloc_ul_harq(slot_point               sl_tx,
                                                       unsigned                 max_harq_nof_retxs,
-                                                      std::optional<harq_id_t> harq_id,
+                                                      std::optional<harq_id_t> harq_id            = std::nullopt,
                                                       bool                     select_normal_mode = true);
 
   std::optional<dl_harq_process_handle>       find_pending_dl_retx();

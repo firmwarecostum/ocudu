@@ -270,7 +270,7 @@ typename cell_harq_repository<IsDl>::harq_type* cell_harq_repository<IsDl>::allo
     return nullptr;
   }
 
-  ocudu_assert(not ((harq_id.has_value() or ue_harq_entity.first_non_reserved_harq_id != 0) and
+  ocudu_assert(not((harq_id.has_value() or ue_harq_entity.first_non_reserved_harq_id != 0) and
                    ue_harq_entity.feedback_disabled_or_mode_b_harq_present),
                "Reserved CG HARQ processes not supported with mode B or disabled feedback");
 

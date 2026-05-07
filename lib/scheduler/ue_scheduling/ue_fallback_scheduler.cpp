@@ -1275,7 +1275,7 @@ void ue_fallback_scheduler::fill_ul_srb_grant(ue&                               
   } else {
     // It is a new tx.
     h_ul =
-        u.get_pcell().harqs.alloc_ul_harq(pdcch_slot + k2 + cell_cfg.ntn_cs_koffset, expert_cfg.max_nof_ul_harq_retxs, std::nullopt);
+        u.get_pcell().harqs.alloc_ul_harq(pdcch_slot + k2 + cell_cfg.ntn_cs_koffset, expert_cfg.max_nof_ul_harq_retxs);
     ocudu_assert(h_ul.has_value(), "Failed to allocate UL HARQ");
   }
 
