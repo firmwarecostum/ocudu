@@ -157,7 +157,8 @@ std::optional<dl_harq_process_handle> ue_cell::handle_dl_ack_info(slot_point    
   return h_dl;
 }
 
-expected<units::bytes> ue_cell::handle_crc_pdu(slot_point pusch_slot, const ul_crc_pdu_indication& crc_pdu)
+expected<std::pair<units::bytes, bool>> ue_cell::handle_crc_pdu(slot_point                   pusch_slot,
+                                                                const ul_crc_pdu_indication& crc_pdu)
 {
   // Find UL HARQ with matching PUSCH slot.
   std::optional<ul_harq_process_handle> h_ul = harqs.find_ul_harq_waiting_ack(pusch_slot);
@@ -172,9 +173,23 @@ expected<units::bytes> ue_cell::handle_crc_pdu(slot_point pusch_slot, const ul_c
   // Update UL HARQ state.
   auto tbs_ret = h_ul->ul_crc_info(crc_pdu.tb_crc_success);
 
-  if (tbs_ret.has_value()) {
-    // HARQ with matching ID and UCI slot was found.
+  if (not tbs_ret.has_value()) {
+    return make_unexpected(default_error_t{});
+  }
 
+  // HARQ with matching ID and UCI slot was found.
+
+  // With CG, if a CRC KO is found with SINR below threshold, we assume it's a DTX (PUSCH wasn't transmitted).
+  bool pusch_transmitted = true;
+
+  if (h_ul->is_cg() and crc_pdu.tb_crc_success and crc_pdu.ul_sinr_dB.has_value() and
+      crc_pdu.ul_sinr_dB.value() < -8.0) {
+    pusch_transmitted = false;
+    return std::make_pair(units::bytes(0U), pusch_transmitted);
+  }
+
+  // With CG, MCS is fixed, thus we don't want to update OLLA or channel state.
+  if (not h_ul->is_cg()) {
     // Update link adaptation controller.
     components.ue_mcs_calculator->handle_ul_crc_info(crc_pdu.tb_crc_success,
                                                      h_ul->get_grant_params().mcs,
@@ -187,7 +202,7 @@ expected<units::bytes> ue_cell::handle_crc_pdu(slot_point pusch_slot, const ul_c
     }
   }
 
-  return tbs_ret;
+  return std::make_pair(tbs_ret.value(), pusch_transmitted);
 }
 
 void ue_cell::handle_srs_channel_matrix(const srs_channel_matrix& channel_matrix)

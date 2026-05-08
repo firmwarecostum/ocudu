@@ -40,6 +40,7 @@ public:
     rnti_t        rnti;
   };
   struct crc_event {
+    enum class crc_res { ok, ko, dtx };
     du_ue_index_t        ue_index;
     rnti_t               rnti;
     du_cell_index_t      cell_index;

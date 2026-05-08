@@ -468,12 +468,27 @@ void ue_cell_event_manager::handle_crc_indication(const ul_crc_indication& crc_i
       }
 
       // Update HARQ.
-      const auto tbs = ue_cc->handle_crc_pdu(sl_rx, *crc_ptr);
-      if (not tbs.has_value()) {
+      const auto crc_process_res = ue_cc->handle_crc_pdu(sl_rx, *crc_ptr);
+      if (not crc_process_res.has_value()) {
+        return event_result::processed;
+      }
+
+      // \ref pusch_transmitted is true if the gnb detected the PUSCH was transmitted, false if it was DTX.
+      auto [tbs, pusch_transmitted] = crc_process_res.value();
+      if (not pusch_transmitted) {
+        // Log event.
+        ev_logger.enqueue(scheduler_event_logger::crc_event{crc_ptr->ue_index,
+                                                            crc_ptr->rnti,
+                                                            cfg.cell_index,
+                                                            sl_rx,
+                                                            crc_ptr->harq_id,
+                                                            crc_ptr->tb_crc_success,
+                                                            crc_ptr->ul_sinr_dB});
         return event_result::processed;
       }
 
       // Process Timing Advance Offset.
+      // TODO: check if we should update TA for CG, given that we don't use SINR for other updates.
       if (crc_ptr->tb_crc_success and crc_ptr->time_advance_offset.has_value() and crc_ptr->ul_sinr_dB.has_value()) {
         u.handle_ul_n_ta_update_indication(
             ue_cc->cell_index, crc_ptr->ul_sinr_dB.value(), crc_ptr->time_advance_offset.value());
@@ -489,7 +504,7 @@ void ue_cell_event_manager::handle_crc_indication(const ul_crc_indication& crc_i
                                                           crc_ptr->ul_sinr_dB});
 
       // Notify metrics handler.
-      metrics.handle_crc_indication(sl_rx, *crc_ptr, tbs.value());
+      metrics.handle_crc_indication(sl_rx, *crc_ptr, tbs);
 
       return event_result::processed;
     };

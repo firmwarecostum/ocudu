@@ -270,6 +270,9 @@ typename cell_harq_repository<IsDl>::harq_type* cell_harq_repository<IsDl>::allo
     return nullptr;
   }
 
+  if constexpr (IsDl) {
+    ocudu_assert(not harq_id.has_value(), "HARQ-ID reservation is only supported for UL");
+  }
   ocudu_assert(not((harq_id.has_value() or ue_harq_entity.first_non_reserved_harq_id != 0) and
                    ue_harq_entity.feedback_disabled_or_mode_b_harq_present),
                "Reserved CG HARQ processes not supported with mode B or disabled feedback");
@@ -322,6 +325,9 @@ typename cell_harq_repository<IsDl>::harq_type* cell_harq_repository<IsDl>::allo
   h.ndi                = !h.ndi;
   h.max_nof_harq_retxs = max_nof_harq_retxs;
   h.retxs_cancelled    = false;
+  if constexpr (not IsDl) {
+    h.is_cg = harq_id.has_value();
+  }
 
   // Set UE HARQ entity common params.
   ue_harq_entity.last_slot_tx =

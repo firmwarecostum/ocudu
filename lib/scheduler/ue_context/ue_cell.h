@@ -136,7 +136,8 @@ public:
   }
 
   /// \brief Handle CRC PDU indication.
-  expected<units::bytes> handle_crc_pdu(slot_point pusch_slot, const ul_crc_pdu_indication& crc_pdu);
+  /// True if PDU was detected as transmitted, false if DTX
+  expected<std::pair<units::bytes, bool>> handle_crc_pdu(slot_point pusch_slot, const ul_crc_pdu_indication& crc_pdu);
 
   /// \brief Handle Sounding Reference Signal (SRS) channel matrix.
   void handle_srs_channel_matrix(const srs_channel_matrix& channel_matrix);
