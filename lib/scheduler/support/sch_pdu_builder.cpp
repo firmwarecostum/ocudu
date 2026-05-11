@@ -670,7 +670,6 @@ void ocudu::build_pusch_cs_rnti(pusch_information&           pusch,
                "Configured Grant configuration doesn't exist");
   const cg_configuration& cg_cfg = bwp_info.ul.ded()->cg_cfg.value();
   ocudu_assert(cg_cfg.rrc_configured_ul_grant_cfg.has_value(), "RRC-ConfiguredUplinkGrant for CG type 1 not set");
-  const auto& ul_grant = cg_cfg.rrc_configured_ul_grant_cfg.value();
 
   // TODO: Populate based on config.
   pusch.intra_slot_freq_hopping = false;

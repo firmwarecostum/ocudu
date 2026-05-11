@@ -482,7 +482,7 @@ void ue_cell_event_manager::handle_crc_indication(const ul_crc_indication& crc_i
                                                             cfg.cell_index,
                                                             sl_rx,
                                                             crc_ptr->harq_id,
-                                                            crc_ptr->tb_crc_success,
+                                                            scheduler_event_logger::crc_event::crc_res_t::dtx,
                                                             crc_ptr->ul_sinr_dB});
         return event_result::processed;
       }
@@ -495,13 +495,15 @@ void ue_cell_event_manager::handle_crc_indication(const ul_crc_indication& crc_i
       }
 
       // Log event.
-      ev_logger.enqueue(scheduler_event_logger::crc_event{crc_ptr->ue_index,
-                                                          crc_ptr->rnti,
-                                                          cfg.cell_index,
-                                                          sl_rx,
-                                                          crc_ptr->harq_id,
-                                                          crc_ptr->tb_crc_success,
-                                                          crc_ptr->ul_sinr_dB});
+      ev_logger.enqueue(scheduler_event_logger::crc_event{
+          crc_ptr->ue_index,
+          crc_ptr->rnti,
+          cfg.cell_index,
+          sl_rx,
+          crc_ptr->harq_id,
+          crc_ptr->tb_crc_success ? scheduler_event_logger::crc_event::crc_res_t::ok
+                                  : scheduler_event_logger::crc_event::crc_res_t::ko,
+          crc_ptr->ul_sinr_dB});
 
       // Notify metrics handler.
       metrics.handle_crc_indication(sl_rx, *crc_ptr, tbs);

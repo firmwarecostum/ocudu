@@ -184,6 +184,7 @@ expected<std::pair<units::bytes, bool>> ue_cell::handle_crc_pdu(slot_point      
 
   if (h_ul->is_cg() and crc_pdu.tb_crc_success and crc_pdu.ul_sinr_dB.has_value() and
       crc_pdu.ul_sinr_dB.value() < -8.0) {
+    h_ul->reset();
     pusch_transmitted = false;
     return std::make_pair(units::bytes(0U), pusch_transmitted);
   }
