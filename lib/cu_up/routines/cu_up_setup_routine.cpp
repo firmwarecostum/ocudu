@@ -28,7 +28,7 @@ void cu_up_setup_routine::operator()(coro_context<async_task<bool>>& ctx)
 {
   CORO_BEGIN(ctx);
 
-  logger.debug("cu-up={}: \"{}\" initialized.", cu_up_id, name());
+  logger.debug("cu-up={}: \"{}\" initialized. Connecting to {} CU-CP(s)", cu_up_id, name(), e1ap_conn_mngs.size());
 
   // Connect to CU-CP(s).
   // TODO this call should not be blocking.
