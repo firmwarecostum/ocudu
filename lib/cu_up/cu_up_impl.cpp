@@ -133,6 +133,7 @@ cu_up::cu_up(const cu_up_config& cfg_, const cu_up_dependencies& dependencies) :
   }
 
   /// > Create e1ap.
+  e1ap_cu_up_mng_adapters.reserve(dependencies.e1_conn_clients.size());
   for (auto* e1_gw : dependencies.e1_conn_clients) {
     e1ap_cu_up_mng_adapters.emplace_back();
     e1ap_cu_up_manager_adapter&     e1ap_cu_up_mng_adapter = e1ap_cu_up_mng_adapters.back();
@@ -148,7 +149,10 @@ cu_up::cu_up(const cu_up_config& cfg_, const cu_up_dependencies& dependencies) :
           stop_command, dependencies, *e1aps[0], *ngu_demux, *ngu_session_mngr, *n3_teid_allocator, main_ctrl_loop));
 
   /// > Connect E1AP(s) to CU-UP manager.
-  e1ap_cu_up_mng_adapters[0].connect_cu_up_manager(*cu_up_mng); // TODO fix adapter.
+  for (auto& e1ap_cu_up_mng_adapter : e1ap_cu_up_mng_adapters) {
+    e1ap_cu_up_mng_adapter.connect_cu_up_manager(*cu_up_mng);
+  }
+
   // Start statistics report timer
   if (cfg.statistics_report_period.count() > 0) {
     statistics_report_timer = dependencies.timers->create_unique_timer(dependencies.exec_mapper->ctrl_executor());

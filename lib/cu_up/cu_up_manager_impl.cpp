@@ -43,7 +43,7 @@ cu_up_manager_impl::cu_up_manager_impl(const cu_up_manager_impl_config&       co
   cu_up_name(config.cu_up_name),
   plmn(config.plmn),
   stop_command(dependencies.stop_command),
-  e1ap(dependencies.e1ap),
+  e1aps({&dependencies.e1ap}), // TODO pass the correct E1AP vector.
   qos(config.qos),
   n3_cfg(config.n3_cfg),
   test_mode_cfg(config.test_mode_cfg),
@@ -153,8 +153,10 @@ cu_up_manager_impl::handle_bearer_context_release_command(const e1ap_bearer_cont
 
 void cu_up_manager_impl::handle_e1ap_connection_drop()
 {
+  // How to know which E1AP dropped?
+  // TODO pass only the correct E1AP.
   schedule_cu_up_async_task(launch_async<cu_up_e1_connection_loss_routine>(
-      cu_up_id, cu_up_name, plmn, stop_command, e1ap, *ue_mng, timers, exec_mapper.ctrl_executor()));
+      cu_up_id, cu_up_name, plmn, stop_command, *e1aps[0], *ue_mng, timers, exec_mapper.ctrl_executor()));
 }
 
 async_task<void> cu_up_manager_impl::handle_e1_reset(const e1ap_reset& msg)
@@ -200,7 +202,7 @@ void cu_up_manager_impl::handle_pdcp_max_count_reached(cu_up_ue_index_t ue_index
     logger.error("ue={}: Reached PDCP MAX count, but could not find UE context", ue_index);
     return;
   }
-  e1ap.handle_bearer_context_release_request_required(ue_index);
+  e1aps[ue_ctxt->get_e1_index()]->handle_bearer_context_release_request_required(ue_index);
 }
 
 void cu_up_manager_impl::handle_pdcp_resume_required(cu_up_ue_index_t ue_index)
@@ -219,7 +221,7 @@ void cu_up_manager_impl::handle_pdcp_resume_required(cu_up_ue_index_t ue_index)
     logger.debug("ue={}: Resume already requested. Ignoring more requrests", ue_index);
   }
 
-  e1ap.handle_dl_data_notification_required(ue_index);
+  e1aps[ue_ctxt->get_e1_index()]->handle_dl_data_notification_required(ue_index);
 }
 
 ///

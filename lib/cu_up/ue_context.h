@@ -172,6 +172,9 @@ public:
 
   [[nodiscard]] cu_up_ue_index_t get_index() const { return index; }
 
+  using cu_up_e1ap_index_t = unsigned; // TODO where to define this?
+  [[nodiscard]] cu_up_e1ap_index_t get_e1_index() const { return e1_index; }
+
   [[nodiscard]] const cu_up_ue_logger& get_logger() const { return logger; }
 
   fifo_async_task_scheduler& task_sched;
@@ -198,9 +201,10 @@ public:
   }
 
 private:
-  cu_up_ue_index_t index;
-  ue_context_cfg   cfg;
-  cu_up_ue_logger  logger;
+  cu_up_e1ap_index_t e1_index = {}; // TODO initialize this properly.
+  cu_up_ue_index_t   index;
+  ue_context_cfg     cfg;
+  cu_up_ue_logger    logger;
 
   e1ap_interface&          e1ap;
   pdu_session_manager_impl pdu_session_manager;

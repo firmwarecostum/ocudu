@@ -87,7 +87,7 @@ private:
   std::string    plmn;
 
   std::atomic<bool>&                    stop_command;
-  e1ap_interface&                       e1ap;
+  std::vector<e1ap_interface*>          e1aps;
   std::map<five_qi_t, cu_up_qos_config> qos;
   const network_interface_config        net_cfg;
   const n3_interface_config             n3_cfg;
