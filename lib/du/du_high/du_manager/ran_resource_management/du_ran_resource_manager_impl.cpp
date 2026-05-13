@@ -3,6 +3,7 @@
 // Portions of this file may implement 3GPP specifications, which may be subject to additional licensing requirements.
 
 #include "du_ran_resource_manager_impl.h"
+#include "du_cg_res_mng.h"
 #include "du_srs_aperiodic_res_mng.h"
 #include "du_srs_periodic_res_mng.h"
 #include "ocudu/mac/config/mac_cell_group_config_factory.h"
@@ -57,6 +58,7 @@ static void reset_serv_cell_cfg(serving_cell_config& serv_cell_cfg)
   }
 
   serv_cell_cfg.ul_config->init_ul_bwp.srs_cfg.reset();
+  serv_cell_cfg.ul_config->init_ul_bwp.cg_cfg.reset();
 }
 
 static std::unique_ptr<du_srs_resource_manager> build_srs_res_mng(span<const du_cell_config> cell_cfg_list)
@@ -65,6 +67,14 @@ static std::unique_ptr<du_srs_resource_manager> build_srs_res_mng(span<const du_
     return std::make_unique<du_srs_aperiodic_res_mng>(cell_cfg_list);
   }
   return std::make_unique<du_srs_policy_max_ul_rate>(cell_cfg_list);
+}
+
+static std::unique_ptr<du_cg_resource_manager> build_cg_res_mng(span<const du_cell_config> cell_cfg_list)
+{
+  if (cell_cfg_list[0].ran.init_bwp.cg_cfg.has_value()) {
+    return std::make_unique<du_cg_policy_single_ue>(cell_cfg_list);
+  }
+  return nullptr;
 }
 
 du_ran_resource_manager_impl::du_ran_resource_manager_impl(span<const du_cell_config>                cell_cfg_list_,
@@ -78,6 +88,7 @@ du_ran_resource_manager_impl::du_ran_resource_manager_impl(span<const du_cell_co
   pucch_res_mng(scheduler_cfg.ue.max_pucchs_per_slot),
   bearer_res_mng(srbs, qos, logger),
   srs_res_mng(build_srs_res_mng(cell_cfg_list)),
+  cg_res_mng(build_cg_res_mng(cell_cfg_list)),
   meas_cfg_mng(cell_cfg_list),
   drx_res_mng(cell_cfg_list),
   ra_res_alloc(cell_cfg_list)
@@ -282,6 +293,15 @@ error_type<std::string> du_ran_resource_manager_impl::allocate_cell_resources(du
           fmt::format("Unable to allocate dedicated PUCCH resources for cell={}", fmt::underlying(cell_index)));
     }
 
+    if (cg_res_mng != nullptr and not cg_res_mng->alloc_resources(ue_res.cell_group)) {
+      // Deallocate previously allocated PUCCH and SRS resources and clear dedicated PDCCH config.
+      pucch_res_mng.dealloc_resources(ue_res.cell_group);
+      srs_res_mng->dealloc_resources(ue_res.cell_group);
+      ue_res.cell_group.cells.at(SERVING_PCELL_IDX).serv_cell_cfg.init_dl_bwp.pdcch_cfg.reset();
+      return make_unexpected(
+          fmt::format("Unable to allocate Configured Grant resources for cell={}", fmt::underlying(cell_index)));
+    }
+
   } else {
     ocudu_assert(not ue_res.cell_group.cells.contains(serv_cell_index), "Reallocation of SCell detected");
     ue_res.cell_group.cells.emplace(serv_cell_index, ue_cell_config{});
@@ -304,6 +324,9 @@ void du_ran_resource_manager_impl::deallocate_cell_resources(du_ue_index_t ue_in
                  "Double deallocation of same UE cell resources detected");
     pucch_res_mng.dealloc_resources(ue_res.cell_group);
     srs_res_mng->dealloc_resources(ue_res.cell_group);
+    if (cg_res_mng != nullptr) {
+      cg_res_mng->dealloc_resources(ue_res.cell_group);
+    }
     ue_res.cell_group.cells.at(SERVING_PCELL_IDX).serv_cell_cfg.cell_index = INVALID_DU_CELL_INDEX;
   } else {
     // TODO: Remove of SCell params.

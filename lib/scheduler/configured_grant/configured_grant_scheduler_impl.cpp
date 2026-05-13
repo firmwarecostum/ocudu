@@ -343,10 +343,9 @@ bool configured_grant_scheduler_impl::allocate_cg_opportunity(cell_slot_resource
   ul_sched_info&     sched_info = slot_alloc.result.ul.puschs.emplace_back();
   pusch_information& pusch_info = sched_info.pusch_cfg;
 
-  // TODO: use correct RNTI
   constexpr unsigned rep_idx = 0U;
   build_pusch_cs_rnti(pusch_info,
-                      rnti,
+                      cg_cfg.cs_rnti,
                       pusch_params,
                       {mcs_idx, tbs},
                       ue_cfg,

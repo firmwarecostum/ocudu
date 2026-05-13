@@ -257,7 +257,10 @@ static cg_configuration make_default_cg_config(const cg_builder_params& cg_param
 {
   cg_configuration cfg{};
 
-  cfg.periodicity                  = cg_params.periodicity;
+  ocudu_assert(cg_params.periodicity.has_value(),
+               "This function cannot be called if Configuration Grant is not enabled");
+
+  cfg.periodicity                  = cg_params.periodicity.value();
   cfg.nrof_harq_processes          = static_cast<uint8_t>(cg_params.nof_harq_processes);
   cfg.frequency_hopping            = cg_configuration::freq_hopping::disabled;
   cfg.cg_dmrs_cfg                  = dmrs_uplink_config{};
@@ -311,7 +314,7 @@ static uplink_config make_default_ue_uplink_config(const ran_cell_config&     ce
   ul_config.init_ul_bwp.srs_cfg.emplace(make_default_srs_config(cell_cfg, ue_bwp_cfg));
 
   // > CG-PUSCH config.
-  if (cell_cfg.init_bwp.cg_cfg.has_value()) {
+  if (cell_cfg.init_bwp.cg_cfg.has_value() and cell_cfg.init_bwp.cg_cfg.has_value()) {
     ul_config.init_ul_bwp.cg_cfg.emplace(make_default_cg_config(*cell_cfg.init_bwp.cg_cfg));
   }
 

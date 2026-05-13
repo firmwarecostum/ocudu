@@ -165,6 +165,9 @@ struct cg_configuration {
     bool operator!=(const rrc_configured_ul_grant& rhs) const { return !(rhs == *this); }
   };
 
+  /// \c CS-RNTI of the UE, common to all CellGroupConfig cells.
+  /// \remark CS-RNTI is present in \c PhysicalCellGroupConfig, TS 38.331, not in ConfiguredGrantConfig.
+  rnti_t cs_rnti;
   /// Frequency hopping mode. When absent, frequency hopping is disabled.
   freq_hopping frequency_hopping;
   /// DMRS configuration for CG PUSCH transmissions.
@@ -201,8 +204,9 @@ struct cg_configuration {
 
   bool operator==(const cg_configuration& rhs) const
   {
-    return frequency_hopping == rhs.frequency_hopping && cg_dmrs_cfg == rhs.cg_dmrs_cfg && mcs_table == rhs.mcs_table &&
-           trans_precoder == rhs.trans_precoder && mcs_table_transform_precoder == rhs.mcs_table_transform_precoder &&
+    return cs_rnti == rhs.cs_rnti && frequency_hopping == rhs.frequency_hopping && cg_dmrs_cfg == rhs.cg_dmrs_cfg &&
+           mcs_table == rhs.mcs_table && trans_precoder == rhs.trans_precoder &&
+           mcs_table_transform_precoder == rhs.mcs_table_transform_precoder &&
            uci_on_pusch_cfg == rhs.uci_on_pusch_cfg && res_alloc == rhs.res_alloc &&
            enable_rbg_size_cfg_2 == rhs.enable_rbg_size_cfg_2 &&
            enable_pwr_ctrl_loop_n1 == rhs.enable_pwr_ctrl_loop_n1 && p0_pusch_alpha == rhs.p0_pusch_alpha &&

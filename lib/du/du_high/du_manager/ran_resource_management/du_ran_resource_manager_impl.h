@@ -9,6 +9,7 @@
 #include "du_meas_config_manager.h"
 #include "du_pucch_resource_manager.h"
 #include "du_ran_resource_manager.h"
+#include "du_cg_resource_manager.h"
 #include "du_srs_resource_manager.h"
 #include "ra_resource_manager.h"
 #include "ue_capability_manager.h"
@@ -118,6 +119,9 @@ private:
   du_bearer_resource_manager bearer_res_mng;
 
   std::unique_ptr<du_srs_resource_manager> srs_res_mng;
+
+  // Allocator of Configured Grant resources.
+  std::unique_ptr<du_cg_resource_manager> cg_res_mng;
 
   // measConfig resources.
   du_meas_config_manager meas_cfg_mng;

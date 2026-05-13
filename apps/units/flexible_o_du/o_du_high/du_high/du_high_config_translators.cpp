@@ -28,6 +28,60 @@
 
 using namespace ocudu;
 
+/// Converts a CG periodicity expressed in slots (14-symbol CP) to the \c cg_configuration::periodicity_t enum.
+static cg_configuration::periodicity_t slots_to_cg_periodicity(unsigned slots)
+{
+  switch (slots) {
+    case 1:
+      return cg_configuration::periodicity_t::sym1x14;
+    case 2:
+      return cg_configuration::periodicity_t::sym2x14;
+    case 4:
+      return cg_configuration::periodicity_t::sym4x14;
+    case 5:
+      return cg_configuration::periodicity_t::sym5x14;
+    case 8:
+      return cg_configuration::periodicity_t::sym8x14;
+    case 10:
+      return cg_configuration::periodicity_t::sym10x14;
+    case 16:
+      return cg_configuration::periodicity_t::sym16x14;
+    case 20:
+      return cg_configuration::periodicity_t::sym20x14;
+    case 32:
+      return cg_configuration::periodicity_t::sym32x14;
+    case 40:
+      return cg_configuration::periodicity_t::sym40x14;
+    case 64:
+      return cg_configuration::periodicity_t::sym64x14;
+    case 80:
+      return cg_configuration::periodicity_t::sym80x14;
+    case 128:
+      return cg_configuration::periodicity_t::sym128x14;
+    case 160:
+      return cg_configuration::periodicity_t::sym160x14;
+    case 256:
+      return cg_configuration::periodicity_t::sym256x14;
+    case 320:
+      return cg_configuration::periodicity_t::sym320x14;
+    case 512:
+      return cg_configuration::periodicity_t::sym512x14;
+    case 640:
+      return cg_configuration::periodicity_t::sym640x14;
+    case 1024:
+      return cg_configuration::periodicity_t::sym1024x14;
+    case 1280:
+      return cg_configuration::periodicity_t::sym1280x14;
+    case 2560:
+      return cg_configuration::periodicity_t::sym2560x14;
+    case 5120:
+      return cg_configuration::periodicity_t::sym5120x14;
+    default:
+      ocudu_assertion_failure("Invalid CG periodicity in slots: {}", slots);
+      return cg_configuration::periodicity_t::sym40x14;
+  }
+}
+
 static tdd_ul_dl_config_common generate_tdd_pattern(subcarrier_spacing scs, const du_high_unit_tdd_ul_dl_config& config)
 {
   tdd_ul_dl_config_common out;
@@ -923,6 +977,18 @@ std::vector<odu::du_cell_config> ocudu::generate_du_cell_config(const du_high_un
     du_srs_cfg.cyclic_shift_reuse_factor = static_cast<nof_cyclic_shifts>(user_srs_cfg.cyclic_shift_reuse_factor);
     du_srs_cfg.sequence_id_reuse_factor  = user_srs_cfg.sequence_id_reuse_factor;
     du_srs_cfg.p0                        = user_srs_cfg.p0;
+
+    // Parameters for Configured Grant.
+    const du_high_configured_grants& user_cg_cfg = base_cell.cg_cfg;
+    if (user_cg_cfg.periodicity_slots.has_value()) {
+      cg_builder_params du_cg_params{};
+      du_cg_params.periodicity        = slots_to_cg_periodicity(user_cg_cfg.periodicity_slots.value());
+      du_cg_params.slot_offset        = user_cg_cfg.slot_offset;
+      du_cg_params.nof_rbs            = user_cg_cfg.nof_rbs;
+      du_cg_params.mcs                = user_cg_cfg.mcs;
+      du_cg_params.nof_harq_processes = user_cg_cfg.nof_harq_processes;
+      out_cell.ran.init_bwp.cg_cfg.emplace(du_cg_params);
+    }
 
     // If any dependent parameter needs to be updated, this is the place.
     config_helpers::compute_nof_sr_csi_pucch_res(du_pucch_cfg,
