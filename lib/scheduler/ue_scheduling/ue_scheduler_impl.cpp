@@ -24,6 +24,7 @@ ue_cell_scheduler* ue_scheduler_impl::do_add_cell(const ue_cell_scheduler_creati
                                                        cell.uci_sched,
                                                        cell.slice_sched,
                                                        cell.srs_sched,
+                                                       cell.cg_sched,
                                                        cell.uci_selector,
                                                        *params.cell_metrics,
                                                        *params.ev_logger});
@@ -139,6 +140,9 @@ void ue_scheduler_impl::run_slot_impl(slot_point sl_tx)
     // Schedule periodic SRS before any UE grants.
     group_cell.srs_sched.run_slot(*group_cell.cell_res_alloc);
 
+    // Schedule configured grant PUSCH opportunities.
+    group_cell.cg_sched.run_slot(*group_cell.cell_res_alloc);
+
     // Run cell-specific SRB0 scheduler.
     group_cell.fallback_sched.run_slot(*group_cell.cell_res_alloc);
 
@@ -184,6 +188,7 @@ ue_scheduler_impl::cell_context::cell_context(ue_scheduler_impl&                
                     *params.cell_metrics,
                     ocudulog::fetch_basic_logger("SCHED")),
   srs_sched(params.cell_res_alloc->cfg, parent.ue_db),
+  cg_sched(params.cell_res_alloc->cfg, parent.ue_db),
   uci_selector(*this)
 {
 }

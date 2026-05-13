@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../configured_grant/configured_grant_scheduler_impl.h"
 #include "../slicing/inter_slice_scheduler.h"
 #include "../srs/srs_scheduler_impl.h"
 #include "../uci_scheduling/uci_indication_selector.h"
@@ -60,6 +61,9 @@ private:
 
     /// SRS scheduler
     srs_scheduler_impl srs_sched;
+
+    /// Configured Grant scheduler.
+    configured_grant_scheduler_impl cg_sched;
 
     /// Handler of UCI indications.
     uci_indication_selector uci_selector;

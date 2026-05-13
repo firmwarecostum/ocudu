@@ -5,6 +5,7 @@
 #pragma once
 
 #include "../config/sched_config_manager.h"
+#include "../configured_grant/configured_grant_scheduler.h"
 #include "../slicing/inter_slice_scheduler.h"
 #include "../ue_context/ue.h"
 #include "ue_fallback_scheduler.h"
@@ -25,15 +26,16 @@ class uci_indication_selector;
 struct uci_action;
 
 struct cell_creation_event {
-  cell_resource_allocator& cell_res_grid;
-  ue_cell_repository&      ue_cell_db;
-  ue_fallback_scheduler&   fallback_sched;
-  uci_scheduler_impl&      uci_sched;
-  inter_slice_scheduler&   slice_sched;
-  srs_scheduler&           srs_sched;
-  uci_indication_selector& uci_selector;
-  cell_metrics_handler&    metrics;
-  scheduler_event_logger&  ev_logger;
+  cell_resource_allocator&    cell_res_grid;
+  ue_cell_repository&         ue_cell_db;
+  ue_fallback_scheduler&      fallback_sched;
+  uci_scheduler_impl&         uci_sched;
+  inter_slice_scheduler&      slice_sched;
+  srs_scheduler&              srs_sched;
+  configured_grant_scheduler& cg_sched;
+  uci_indication_selector&    uci_selector;
+  cell_metrics_handler&       metrics;
+  scheduler_event_logger&     ev_logger;
 };
 
 class ue_event_manager;
@@ -153,10 +155,11 @@ private:
   cell_resource_allocator&  res_grid;
   cell_harq_manager&        cell_harqs;
   ue_fallback_scheduler&    fallback_sched;
-  uci_scheduler_impl&       uci_sched;
-  inter_slice_scheduler&    slice_sched;
-  srs_scheduler&            srs_sched;
-  uci_indication_selector&  uci_selector;
+  uci_scheduler_impl&         uci_sched;
+  inter_slice_scheduler&      slice_sched;
+  srs_scheduler&              srs_sched;
+  configured_grant_scheduler& cg_sched;
+  uci_indication_selector&    uci_selector;
   cell_metrics_handler&     metrics;
   scheduler_event_logger&   ev_logger;
 

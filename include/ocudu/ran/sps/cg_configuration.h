@@ -8,6 +8,7 @@
 #include "ocudu/adt/static_vector.h"
 #include "ocudu/ran/dmrs/dmrs_uplink_config.h"
 #include "ocudu/ran/pusch/pusch_configuration.h"
+#include "ocudu/ran/rnti.h"
 #include "ocudu/ran/uci/uci_configuration.h"
 #include <optional>
 #include <variant>

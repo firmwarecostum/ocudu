@@ -281,7 +281,7 @@ static cg_configuration make_default_cg_config(const cg_builder_params& cg_param
   grant.time_domain_allocation = 0;
   // We set a temporary value of 10, to avoid collisions with PUCCH
   // TODO: set this based on the guardband.
-  grant.vrbs                     = vrb_interval{10, cg_params.nof_rbs};
+  grant.vrbs                     = vrb_interval{10, 10U + cg_params.nof_rbs};
   grant.antenna_port             = 0;
   grant.dmrs_seq_initialization  = std::nullopt;
   grant.precoding_and_nof_layers = 0;

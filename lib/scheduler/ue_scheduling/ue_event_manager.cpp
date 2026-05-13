@@ -201,6 +201,7 @@ ue_cell_event_manager::ue_cell_event_manager(ue_event_manager&          parent_,
   uci_sched(cell_ev.uci_sched),
   slice_sched(cell_ev.slice_sched),
   srs_sched(cell_ev.srs_sched),
+  cg_sched(cell_ev.cg_sched),
   uci_selector(cell_ev.uci_selector),
   metrics(cell_ev.metrics),
   ev_logger(cell_ev.ev_logger),
@@ -283,6 +284,9 @@ void ue_cell_event_manager::handle_ue_creation(ue_config_update_event ev)
     // Note: This action only has effect when UE is created in non-fallback mode.
     slice_sched.add_ue(ue_index);
 
+    // Add UE to the configured grant scheduler if it has a CG configuration.
+    cg_sched.add_ue(added_ue.get_cell(SERVING_PCELL_IDX).cfg());
+
     // Log Event.
     ev_logger.enqueue(scheduler_event_logger::ue_creation_event{ue_index, crnti, pcell_index});
 
@@ -313,6 +317,7 @@ void ue_cell_event_manager::handle_ue_reconfiguration(ue_config_update_event ev)
     auto& ue_cc = u.get_cell(SERVING_PCELL_IDX);
     uci_sched.reconf_ue(ev.next_config().ue_cell_cfg(ue_cc.cell_index), ue_cc.cfg());
     srs_sched.reconf_ue(ev.next_config().ue_cell_cfg(ue_cc.cell_index), ue_cc.cfg());
+    cg_sched.reconf_ue(ev.next_config().ue_cell_cfg(ue_cc.cell_index), ue_cc.cfg());
 
     // Configure existing UE.
     ue_db.reconfigure_ue(ev.next_config(), ev.is_reestablished());
@@ -350,6 +355,8 @@ void ue_cell_event_manager::handle_ue_deletion(ue_config_delete_event ev)
     uci_sched.rem_ue(u.get_pcell().cfg());
     // Update SRS scheduling by removing existing UE SRS resources.
     srs_sched.rem_ue(u.get_pcell().cfg());
+    // Remove UE from configured grant scheduler.
+    cg_sched.rem_ue(u.get_pcell().cfg());
     // Schedule removal of UE from slice scheduler.
     slice_sched.rem_ue(ue_idx);
 

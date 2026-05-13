@@ -55,6 +55,25 @@ ue_cell::ue_cell(du_ue_index_t                ue_index_,
       pcell_state->msg3_rx_slot = msg3_slot_rx.value();
     }
   }
+
+  // Set CG-reserved HARQ processes at creation time so that first_non_reserved_harq_id is correct from the start.
+  const auto* ul_ded             = ue_cell_cfg_.init_bwp().ul.ded();
+  const unsigned nof_cg_reserved = (ul_ded != nullptr and ul_ded->cg_cfg.has_value())
+                                       ? ul_ded->cg_cfg->nrof_harq_processes
+                                       : 0U;
+  if (nof_cg_reserved > 0) {
+    const unsigned new_dl_harqs = ue_cell_cfg_.pdsch_serving_cell_cfg() != nullptr
+                                      ? static_cast<unsigned>(ue_cell_cfg_.pdsch_serving_cell_cfg()->nof_harq_proc)
+                                      : harqs.nof_dl_harqs();
+    const unsigned new_ul_harqs = ue_cell_cfg_.pusch_serving_cell_cfg() != nullptr
+                                      ? static_cast<unsigned>(ue_cell_cfg_.pusch_serving_cell_cfg()->nof_harq_proc)
+                                      : harqs.nof_ul_harqs();
+    harqs.reconfigure(new_dl_harqs,
+                      new_ul_harqs,
+                      ue_cell_cfg_.pdsch_serving_cell_cfg()->dl_harq_feedback_disabled,
+                      ue_cell_cfg_.pusch_serving_cell_cfg()->ul_harq_mode,
+                      nof_cg_reserved);
+  }
 }
 
 void ue_cell::deactivate()
@@ -83,8 +102,10 @@ void ue_cell::handle_reconfiguration_request(const ue_cell_configuration& ue_cel
                               ? static_cast<unsigned>(ue_cell_cfg.pusch_serving_cell_cfg()->nof_harq_proc)
                               : harqs.nof_ul_harqs();
 
-  // TODO: when CG is supported, pass the number of requested HARQ processes for CG use.
-  constexpr unsigned nof_cg_reserved_harq = 0;
+  const auto* ul_ded             = ue_cell_cfg.init_bwp().ul.ded();
+  const unsigned nof_cg_reserved_harq = (ul_ded != nullptr and ul_ded->cg_cfg.has_value())
+                                            ? ul_ded->cg_cfg->nrof_harq_processes
+                                            : 0U;
   harqs.reconfigure(new_dl_harqs,
                     new_ul_harqs,
                     ue_cell_cfg.pdsch_serving_cell_cfg()->dl_harq_feedback_disabled,

@@ -288,7 +288,7 @@ bool configured_grant_scheduler_impl::allocate_cg_opportunity(cell_slot_resource
   static constexpr unsigned nof_harq_retx = 0;
   const harq_id_t           h_id =
       get_harq_id(pusch_slot, pusch_params.symbols.start(), cg_cfg.periodicity, cg_cfg.nrof_harq_processes);
-  std::optional h_ul = ue_cc->harqs.alloc_ul_harq(pusch_slot, nof_harq_retx, h_id, /*select_normal_mode*/ true).value();
+  auto h_ul = ue_cc->harqs.alloc_ul_harq(pusch_slot, nof_harq_retx, h_id, /*select_normal_mode*/ true);
   ocudu_assert(h_ul.has_value(), "Failed to allocate UL HARQ");
 
   // Build DMRS information from the CG-specific DMRS configuration.
