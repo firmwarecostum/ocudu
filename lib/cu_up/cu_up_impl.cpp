@@ -134,11 +134,16 @@ cu_up::cu_up(const cu_up_config& cfg_, const cu_up_dependencies& dependencies) :
 
   /// > Create e1ap.
   e1ap_cu_up_mng_adapters.reserve(dependencies.e1_conn_clients.size());
-  for (auto* e1_gw : dependencies.e1_conn_clients) {
+  for (unsigned e1ap_index = 0; e1ap_index < dependencies.e1_conn_clients.size(); e1ap_index++) {
+    auto* e1_gw = dependencies.e1_conn_clients[e1ap_index];
     e1ap_cu_up_mng_adapters.emplace_back();
     e1ap_cu_up_manager_adapter&     e1ap_cu_up_mng_adapter = e1ap_cu_up_mng_adapters.back();
-    std::unique_ptr<e1ap_interface> e1ap                   = create_e1ap(
-        cfg.e1ap, *e1_gw, e1ap_cu_up_mng_adapter, *dependencies.timers, dependencies.exec_mapper->ctrl_executor());
+    std::unique_ptr<e1ap_interface> e1ap                   = create_e1ap(e1ap_index,
+                                                                         cfg.e1ap,
+                                                                         *e1_gw,
+                                                                         e1ap_cu_up_mng_adapter,
+                                                                         *dependencies.timers,
+                                                                         dependencies.exec_mapper->ctrl_executor());
     e1aps.push_back(std::move(e1ap));
   }
 

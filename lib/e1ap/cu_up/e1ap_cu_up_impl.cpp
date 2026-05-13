@@ -37,11 +37,13 @@ private:
 
 } // namespace
 
-e1ap_cu_up_impl::e1ap_cu_up_impl(const e1ap_configuration&    e1ap_cfg_,
+e1ap_cu_up_impl::e1ap_cu_up_impl(e1ap_index_t                 index_,
+                                 const e1ap_configuration&    e1ap_cfg_,
                                  e1_connection_client&        e1_client_handler_,
                                  e1ap_cu_up_manager_notifier& cu_up_notifier_,
                                  timer_manager&               timers_,
                                  task_executor&               cu_up_exec_) :
+  index(index_),
   e1ap_cfg(e1ap_cfg_),
   logger(ocudulog::fetch_basic_logger("CU-UP-E1")),
   cu_up_notifier(cu_up_notifier_),
@@ -270,7 +272,8 @@ void e1ap_cu_up_impl::handle_bearer_context_setup_request(const asn1::e1ap::bear
   }
 
   // Create UE context and store it.
-  ue_ctxt_list.add_ue(bearer_context_setup_response_msg.ue_index,
+  ue_ctxt_list.add_ue(index,
+                      bearer_context_setup_response_msg.ue_index,
                       cu_up_ue_e1ap_id,
                       int_to_gnb_cu_cp_ue_e1ap_id(msg->gnb_cu_cp_ue_e1ap_id),
                       asn1_to_activity_notification_level(msg->activity_notif_level.value));
