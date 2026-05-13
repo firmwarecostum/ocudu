@@ -25,7 +25,8 @@ protected:
   std::unique_ptr<ue_context> create_ue()
   {
     std::unique_ptr<ue_executor_mapper> exec_mapper = std::make_unique<dummy_ue_executor_mapper>(exec);
-    return std::make_unique<ue_context>(ue_index,
+    return std::make_unique<ue_context>(0,
+                                        ue_index,
                                         ue_cfg,
                                         n3_cfg,
                                         cu_up_test_mode_config{},
@@ -91,7 +92,7 @@ private:
                              false};
 
   // UE context cfg.
-  ue_context_cfg ue_cfg{{}, activity_notification_level_t::ue, std::chrono::seconds{30}, {}, 1000000000, {}};
+  ue_context_cfg ue_cfg{0, {}, activity_notification_level_t::ue, std::chrono::seconds{30}, {}, 1000000000, {}};
 };
 
 TEST_F(cu_up_bearer_context_modification_procedure_tester, when_suspend_received_bearer_context_is_suspended)

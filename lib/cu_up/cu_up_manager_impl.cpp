@@ -81,6 +81,8 @@ cu_up_manager_impl::handle_bearer_context_setup_request(const e1ap_bearer_contex
 
   // 1. Create new UE context
   ue_context_cfg ue_cfg = {};
+  ue_cfg.e1_index       = msg.e1_index;
+  fmt::println("E1 Index: {}", ue_cfg.e1_index);
   fill_sec_as_config(ue_cfg.security_info, msg.security_info);
   ue_cfg.activity_level                   = msg.activity_notif_level;
   ue_cfg.ue_inactivity_timeout            = msg.ue_inactivity_timer;
