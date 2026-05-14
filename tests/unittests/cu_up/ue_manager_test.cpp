@@ -38,7 +38,7 @@ protected:
 
     // create DUT object
     ue_mng = std::make_unique<ue_manager>(ue_manager_config{max_nof_ues, n3_config, test_mode_config},
-                                          ue_manager_dependencies{*e1ap,
+                                          ue_manager_dependencies{{e1ap.get()},
                                                                   timers,
                                                                   *f1u_gw,
                                                                   *ngu_session_mngr,

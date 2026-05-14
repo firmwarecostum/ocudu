@@ -24,7 +24,7 @@ static ue_manager_dependencies generate_ue_manager_dependencies(const cu_up_mana
                                                                 cu_up_manager_pdcp_interface& cu_up_mngr_pdcp_if,
                                                                 ocudulog::basic_logger&       logger)
 {
-  return {*dependencies.e1aps[0], // TODO pass all of the E1APs.
+  return {dependencies.e1aps,
           dependencies.timers,
           dependencies.f1u_gateway,
           dependencies.ngu_session_mngr,
@@ -82,7 +82,7 @@ cu_up_manager_impl::handle_bearer_context_setup_request(const e1ap_bearer_contex
   // 1. Create new UE context
   ue_context_cfg ue_cfg = {};
   ue_cfg.e1_index       = msg.e1_index;
-  fmt::println("E1 Index: {}", ue_cfg.e1_index);
+  fmt::println("Bearer Context Setup Request E1 Index: {}", ue_cfg.e1_index);
   fill_sec_as_config(ue_cfg.security_info, msg.security_info);
   ue_cfg.activity_level                   = msg.activity_notif_level;
   ue_cfg.ue_inactivity_timeout            = msg.ue_inactivity_timer;
@@ -120,6 +120,7 @@ async_task<e1ap_bearer_context_modification_response>
 cu_up_manager_impl::handle_bearer_context_modification_request(const e1ap_bearer_context_modification_request& msg)
 {
   ue_context* ue_ctxt = ue_mng->find_ue(msg.ue_index);
+  fmt::println("Bearer Context Modification Request E1 Index: {}", ue_ctxt->get_e1_index());
   if (ue_ctxt == nullptr) {
     logger.error("Could not find UE context");
     return launch_async([](coro_context<async_task<e1ap_bearer_context_modification_response>>& ctx) {
