@@ -28,17 +28,17 @@ struct cu_up_manager_impl_config {
 
 /// CU-UP manager implementation dependencies.
 struct cu_up_manager_impl_dependencies {
-  std::atomic<bool>&         stop_command;
-  e1ap_interface&            e1ap;
-  gtpu_demux&                ngu_demux;
-  ngu_session_manager&       ngu_session_mngr;
-  gtpu_teid_pool&            n3_teid_allocator;
-  gtpu_teid_pool&            f1u_teid_allocator;
-  cu_up_executor_mapper&     exec_mapper;
-  f1u_cu_up_gateway&         f1u_gateway;
-  timer_manager&             timers;
-  dlt_pcap&                  gtpu_pcap;
-  fifo_async_task_scheduler& cu_up_task_scheduler;
+  std::atomic<bool>&           stop_command;
+  std::vector<e1ap_interface*> e1aps;
+  gtpu_demux&                  ngu_demux;
+  ngu_session_manager&         ngu_session_mngr;
+  gtpu_teid_pool&              n3_teid_allocator;
+  gtpu_teid_pool&              f1u_teid_allocator;
+  cu_up_executor_mapper&       exec_mapper;
+  f1u_cu_up_gateway&           f1u_gateway;
+  timer_manager&               timers;
+  dlt_pcap&                    gtpu_pcap;
+  fifo_async_task_scheduler&   cu_up_task_scheduler;
 };
 
 class cu_up_manager_impl final : public cu_up_manager

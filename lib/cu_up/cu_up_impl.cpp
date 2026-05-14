@@ -43,16 +43,22 @@ static cu_up_manager_impl_config generate_cu_up_manager_impl_config(const cu_up_
 }
 
 static cu_up_manager_impl_dependencies
-generate_cu_up_manager_impl_dependencies(std::atomic<bool>&         stop_command,
-                                         const cu_up_dependencies&  dependencies,
-                                         e1ap_interface&            e1ap,
-                                         gtpu_demux&                ngu_demux,
-                                         ngu_session_manager&       ngu_session_mngr,
-                                         gtpu_teid_pool&            n3_teid_allocator,
-                                         fifo_async_task_scheduler& main_ctrl_loop)
+generate_cu_up_manager_impl_dependencies(std::atomic<bool>&                                  stop_command,
+                                         const cu_up_dependencies&                           dependencies,
+                                         const std::vector<std::unique_ptr<e1ap_interface>>& e1aps,
+                                         gtpu_demux&                                         ngu_demux,
+                                         ngu_session_manager&                                ngu_session_mngr,
+                                         gtpu_teid_pool&                                     n3_teid_allocator,
+                                         fifo_async_task_scheduler&                          main_ctrl_loop)
 {
+  std::vector<e1ap_interface*> e1ap_ptrs;
+  e1ap_ptrs.reserve(e1aps.size());
+  for (const auto& e1ap : e1aps) {
+    e1ap_ptrs.push_back(e1ap.get());
+  }
+
   return {stop_command,
-          e1ap,
+          e1ap_ptrs,
           ngu_demux,
           ngu_session_mngr,
           n3_teid_allocator,
@@ -151,7 +157,7 @@ cu_up::cu_up(const cu_up_config& cfg_, const cu_up_dependencies& dependencies) :
   cu_up_mng = std::make_unique<cu_up_manager_impl>(
       generate_cu_up_manager_impl_config(cfg),
       generate_cu_up_manager_impl_dependencies(
-          stop_command, dependencies, *e1aps[0], *ngu_demux, *ngu_session_mngr, *n3_teid_allocator, main_ctrl_loop));
+          stop_command, dependencies, e1aps, *ngu_demux, *ngu_session_mngr, *n3_teid_allocator, main_ctrl_loop));
 
   /// > Connect E1AP(s) to CU-UP manager.
   for (auto& e1ap_cu_up_mng_adapter : e1ap_cu_up_mng_adapters) {

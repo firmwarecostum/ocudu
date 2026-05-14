@@ -24,7 +24,7 @@ static ue_manager_dependencies generate_ue_manager_dependencies(const cu_up_mana
                                                                 cu_up_manager_pdcp_interface& cu_up_mngr_pdcp_if,
                                                                 ocudulog::basic_logger&       logger)
 {
-  return {dependencies.e1ap,
+  return {*dependencies.e1aps[0], // TODO pass all of the E1APs.
           dependencies.timers,
           dependencies.f1u_gateway,
           dependencies.ngu_session_mngr,
@@ -43,7 +43,7 @@ cu_up_manager_impl::cu_up_manager_impl(const cu_up_manager_impl_config&       co
   cu_up_name(config.cu_up_name),
   plmn(config.plmn),
   stop_command(dependencies.stop_command),
-  e1aps({&dependencies.e1ap}), // TODO pass the correct E1AP vector.
+  e1aps(dependencies.e1aps),
   qos(config.qos),
   n3_cfg(config.n3_cfg),
   test_mode_cfg(config.test_mode_cfg),
