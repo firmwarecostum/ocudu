@@ -36,8 +36,10 @@ public:
   get_cn_assist_info_for_inactive(cu_cp_ue_index_t ue_index) override;
 
   // NGAP connection manager functions.
-  bool                             handle_amf_tnl_connection_request() override;
-  async_task<void>                 handle_amf_disconnection_request() override;
+  async_task<bool> handle_amf_tnl_connection_request() override;
+  std::unique_ptr<ngap_rx_message_notifier>
+                   handle_new_amf_connection(std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier) override;
+  async_task<void> handle_amf_disconnection_request() override;
   async_task<ngap_ng_setup_result> handle_ng_setup_request(unsigned max_setup_retries) override;
   async_task<void>                 handle_ng_reset_message(const cu_cp_reset& msg) override;
 

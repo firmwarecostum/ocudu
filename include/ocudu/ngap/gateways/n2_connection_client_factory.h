@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ocudu/cu_cp/cu_cp_types.h"
 #include "ocudu/gateways/sctp_network_gateway.h"
 #include "ocudu/ngap/gateways/n2_connection_client.h"
 #include <variant>
@@ -20,15 +21,20 @@ struct n2_connection_client_config {
   /// Parameters for a local AMF stub connection.
   struct no_core {};
 
-  /// Parameters specific to an SCTP network gateway.
+  /// Parameters specific to an SCTP network gateway. \p ctrl_exec is the executor on which the gateway defers data
+  /// and notification handling — must be the CU-CP control executor.
   struct network {
     io_broker&                    broker;
     task_executor&                io_rx_executor;
+    task_executor&                ctrl_exec;
     sctp_network_connector_config sctp;
   };
 
   /// PCAP writer for the NGAP messages.
   dlt_pcap& pcap;
+
+  /// Index of the AMF this gateway serves; used by the gateway to dispatch via the CU-CP NG handler on COMM_UP.
+  amf_index_t amf_index;
 
   /// Mode of operation.
   std::variant<no_core, network> mode;

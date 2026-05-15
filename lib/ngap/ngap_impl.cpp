@@ -95,19 +95,29 @@ ngap_impl::get_cn_assist_info_for_inactive(cu_cp_ue_index_t ue_index)
   return ue_ctxt.core_network_assist_info_for_inactive;
 }
 
-bool ngap_impl::handle_amf_tnl_connection_request()
+async_task<bool> ngap_impl::handle_amf_tnl_connection_request()
 {
-  // This could be a reconnection, so make sure the tx_pdu_notifier is released before creating a new one.
-  if (tx_pdu_notifier.is_connected()) {
-    tx_pdu_notifier.disconnect();
-  }
+  return launch_async([this, success = false](coro_context<async_task<bool>>& ctx) mutable {
+    CORO_BEGIN(ctx);
 
-  std::unique_ptr<ngap_message_notifier> pdu_notifier = conn_handler.connect_to_amf();
-  if (pdu_notifier == nullptr) {
-    return false;
-  }
-  tx_pdu_notifier.connect(std::move(pdu_notifier));
-  return true;
+    // This could be a reconnection, so make sure the tx_pdu_notifier is released before creating a new one.
+    if (tx_pdu_notifier.is_connected()) {
+      tx_pdu_notifier.disconnect();
+    }
+
+    CORO_AWAIT_VALUE(success, conn_handler.connect_to_amf());
+    if (not success) {
+      CORO_EARLY_RETURN(false);
+    }
+    tx_pdu_notifier.connect(conn_handler.take_tx_notifier());
+    CORO_RETURN(true);
+  });
+}
+
+std::unique_ptr<ngap_rx_message_notifier>
+ngap_impl::handle_new_amf_connection(std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier)
+{
+  return conn_handler.handle_new_amf_connection(std::move(n2_tx_pdu_notifier));
 }
 
 async_task<void> ngap_impl::handle_amf_disconnection_request()

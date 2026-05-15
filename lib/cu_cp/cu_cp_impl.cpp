@@ -32,6 +32,7 @@
 #include "ocudu/cu_cp/cu_cp_location_reporting_types.h"
 #include "ocudu/cu_cp/cu_cp_types.h"
 #include "ocudu/f1ap/cu_cp/f1ap_cu.h"
+#include "ocudu/ngap/gateways/n2_connection_client.h"
 #include "ocudu/nrppa/nrppa.h"
 #include "ocudu/nrppa/nrppa_factory.h"
 #include "ocudu/ran/cause/common.h"
@@ -221,6 +222,18 @@ bool cu_cp_impl::amfs_are_connected()
   }
 
   return true;
+}
+
+std::unique_ptr<ngap_rx_message_notifier>
+cu_cp_impl::handle_new_amf_connection(amf_index_t amf_index, std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier)
+{
+  ngap_interface* ngap = ngap_db.find_ngap(amf_index);
+  if (ngap == nullptr) {
+    logger.error("Failed to handle new AMF connection. Cause: No NGAP registered for amf_index={}",
+                 fmt::underlying(amf_index));
+    return nullptr;
+  }
+  return ngap->get_ngap_connection_manager().handle_new_amf_connection(std::move(n2_tx_pdu_notifier));
 }
 
 void cu_cp_impl::handle_bearer_context_release_request(const cu_cp_bearer_context_release_request& msg)

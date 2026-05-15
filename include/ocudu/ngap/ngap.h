@@ -21,6 +21,7 @@
 
 namespace ocudu::ocucp {
 
+class ngap_rx_message_notifier;
 struct ngap_message;
 struct up_pdu_session_context;
 
@@ -61,7 +62,13 @@ public:
   virtual ~ngap_connection_manager() = default;
 
   /// \brief Request a new TNL association to the AMF.
-  virtual bool handle_amf_tnl_connection_request() = 0;
+  virtual async_task<bool> handle_amf_tnl_connection_request() = 0;
+
+  /// \brief Notify the NGAP that the N2 TNL association is up and hand over the Tx notifier. Called by the gateway
+  /// (via the CU-CP NG handler dispatch) on SCTP COMM_UP.
+  /// \return Rx notifier the gateway uses to forward NGAP PDUs from the AMF.
+  virtual std::unique_ptr<ngap_rx_message_notifier>
+  handle_new_amf_connection(std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier) = 0;
 
   /// \brief Request the NGAP handler to disconnect from the AMF.
   virtual async_task<void> handle_amf_disconnection_request() = 0;

@@ -7,11 +7,13 @@
 #include "lib/cu_cp/ue_manager/ue_manager_impl.h"
 #include "ngap_test_messages.h"
 #include "ocudu/adt/byte_buffer.h"
+#include "ocudu/cu_cp/cu_cp_ng_handler.h"
 #include "ocudu/cu_cp/cu_cp_types.h"
 #include "ocudu/cu_cp/ue_task_scheduler.h"
 #include "ocudu/ngap/gateways/n2_connection_client.h"
 #include "ocudu/ngap/ngap_message.h"
 #include "ocudu/security/security.h"
+#include "ocudu/support/async/async_task.h"
 #include <gtest/gtest.h>
 #include <optional>
 
@@ -27,44 +29,50 @@ public:
 
   void attach_handler(ngap_message_handler* handler_) { handler = handler_; }
 
-  std::unique_ptr<ngap_message_notifier>
-  handle_cu_cp_connection_request(std::unique_ptr<ngap_rx_message_notifier> cu_cp_rx_pdu_notifier) override
+  void attach_cu_cp(cu_cp_ng_handler& handler_) override { cu_cp = &handler_; }
+
+  async_task<bool> connect_to_amf() override
   {
-    class dummy_ngap_message_notifier : public ngap_message_notifier
-    {
-    public:
-      dummy_ngap_message_notifier(dummy_n2_gateway& parent_) : parent(parent_) {}
-      ~dummy_ngap_message_notifier() { parent.rx_pdu_notifier.reset(); }
+    return launch_async([this](coro_context<async_task<bool>>& ctx) {
+      CORO_BEGIN(ctx);
 
-      [[nodiscard]] bool on_new_message(const ngap_message& msg) override
+      class dummy_ngap_message_notifier : public ngap_message_notifier
       {
-        parent.logger.info("Received message");
+      public:
+        dummy_ngap_message_notifier(dummy_n2_gateway& parent_) : parent(parent_) {}
+        ~dummy_ngap_message_notifier() override { parent.rx_pdu_notifier.reset(); }
 
-        // Verify correct packing of outbound PDU.
-        byte_buffer   pack_buffer;
-        asn1::bit_ref bref(pack_buffer);
-        if (msg.pdu.pack(bref) != asn1::OCUDUASN_SUCCESS) {
-          parent.logger.error("Failed to pack message");
-          return false;
+        [[nodiscard]] bool on_new_message(const ngap_message& msg) override
+        {
+          parent.logger.info("Received message");
+
+          // Verify correct packing of outbound PDU.
+          byte_buffer   pack_buffer;
+          asn1::bit_ref bref(pack_buffer);
+          if (msg.pdu.pack(bref) != asn1::OCUDUASN_SUCCESS) {
+            parent.logger.error("Failed to pack message");
+            return false;
+          }
+
+          parent.last_ngap_msgs.push_back(msg);
+
+          if (parent.handler == nullptr) {
+            return false;
+          }
+          parent.logger.info("Forwarding PDU");
+          parent.handler->handle_message(msg);
+          return true;
         }
 
-        parent.last_ngap_msgs.push_back(msg);
+      private:
+        dummy_n2_gateway& parent;
+      };
 
-        if (parent.handler == nullptr) {
-          return false;
-        }
-        parent.logger.info("Forwarding PDU");
-        parent.handler->handle_message(msg);
-        return true;
-      }
-
-    private:
-      dummy_n2_gateway& parent;
-    };
-
-    rx_pdu_notifier = std::move(cu_cp_rx_pdu_notifier);
-
-    return std::make_unique<dummy_ngap_message_notifier>(*this);
+      ocudu_assert(cu_cp != nullptr, "attach_cu_cp must be called before connect_to_amf");
+      rx_pdu_notifier =
+          cu_cp->handle_new_amf_connection(uint_to_amf_index(0), std::make_unique<dummy_ngap_message_notifier>(*this));
+      CORO_RETURN(rx_pdu_notifier != nullptr);
+    });
   }
 
   std::vector<ngap_message> last_ngap_msgs;
@@ -72,8 +80,32 @@ public:
 private:
   ocudulog::basic_logger& logger;
   ngap_message_handler*   handler = nullptr;
+  cu_cp_ng_handler*       cu_cp   = nullptr;
 
   std::unique_ptr<ngap_rx_message_notifier> rx_pdu_notifier;
+};
+
+/// Minimal cu_cp_ng_handler that forwards \ref handle_new_amf_connection to a single \ref ngap_interface — used by
+/// NGAP unit tests that build an isolated NGAP rather than a full CU-CP.
+class dummy_cu_cp_ng_handler : public cu_cp_ng_handler
+{
+public:
+  void attach_ngap(ngap_interface& ngap_) { ngap = &ngap_; }
+
+  ngap_message_handler* get_ngap_message_handler(const plmn_identity& /*plmn*/) override { return nullptr; }
+
+  bool amfs_are_connected() override { return true; }
+
+  std::unique_ptr<ngap_rx_message_notifier>
+  handle_new_amf_connection(amf_index_t /*amf_index*/,
+                            std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier) override
+  {
+    ocudu_assert(ngap != nullptr, "attach_ngap must be called before handle_new_amf_connection");
+    return ngap->get_ngap_connection_manager().handle_new_amf_connection(std::move(n2_tx_pdu_notifier));
+  }
+
+private:
+  ngap_interface* ngap = nullptr;
 };
 
 /// Dummy handler storing and printing the received PDU.

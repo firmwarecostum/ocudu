@@ -27,9 +27,16 @@ public:
                           task_executor&        ctrl_exec_);
   ~ngap_connection_handler();
 
-  /// Initiate new TNL association to the AMF via N2 interface.
-  /// \return Notifier used by the NGAP to send NGAP PDUs to the N2 gateway.
-  std::unique_ptr<ngap_message_notifier> connect_to_amf();
+  /// Initiate a new TNL association to the AMF via N2 interface. On success, the Tx notifier provided by the gateway
+  /// (via \ref handle_new_amf_connection) is held internally and can be retrieved with \ref take_tx_notifier.
+  async_task<bool> connect_to_amf();
+
+  /// Take ownership of the wrapped N2 Tx notifier. Valid only after a successful \ref connect_to_amf.
+  std::unique_ptr<ngap_message_notifier> take_tx_notifier();
+
+  /// Invoked by the N2 gateway on SCTP COMM_UP via \ref cu_cp_ng_handler dispatch.
+  std::unique_ptr<ngap_rx_message_notifier>
+  handle_new_amf_connection(std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier);
 
   async_task<void> handle_tnl_association_removal();
 

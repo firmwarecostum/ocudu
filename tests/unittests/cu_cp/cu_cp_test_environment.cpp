@@ -246,6 +246,11 @@ cu_cp_test_environment::cu_cp_test_environment(cu_cp_test_env_params params_) :
 
   // Create CU-CP instance.
   cu_cp_inst = create_cu_cp(cu_cp_cfg);
+
+  // Attach the CU-CP NG handler to each mock AMF gateway so the gateway can deliver Tx notifiers on connect.
+  for (auto& [amf_index, amf_config] : amf_configs) {
+    amf_config.amf_stub->attach_cu_cp(cu_cp_inst->get_ng_handler());
+  }
 }
 
 cu_cp_test_environment::~cu_cp_test_environment()

@@ -56,6 +56,9 @@ protected:
     // create CU-CP.
     cu_cp_obj = create_cu_cp(cu_cfg);
 
+    // Attach the CU-CP NG handler so the mock AMF can deliver Tx notifiers on connect_to_amf().
+    amf->attach_cu_cp(cu_cp_obj->get_ng_handler());
+
     // Create AMF response to NG Setup.
     amf->enqueue_next_tx_pdu(ocucp::generate_ng_setup_response());
 

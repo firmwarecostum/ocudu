@@ -3,6 +3,7 @@
 // Portions of this file may implement 3GPP specifications, which may be subject to additional licensing requirements.
 
 #include "o_cu_cp_unit_impl.h"
+#include "ocudu/cu_cp/cu_cp.h"
 
 using namespace ocudu;
 using namespace ocucp;
@@ -10,9 +11,13 @@ using namespace ocucp;
 o_cu_cp_unit_impl::o_cu_cp_unit_impl(std::vector<std::unique_ptr<ocucp::n2_connection_client>> n2_clients_,
                                      std::unique_ptr<e2_cu_metrics_connector_manager>          e2_metric_connector_,
                                      std::unique_ptr<ocucp::o_cu_cp>                           cu_cp_) :
-  n2_clients(std::move(n2_clients_)), e2_metric_connector(std::move(e2_metric_connector_)), o_cu(std::move(cu_cp_))
+  e2_metric_connector(std::move(e2_metric_connector_)), o_cu(std::move(cu_cp_)), n2_clients(std::move(n2_clients_))
 {
   ocudu_assert(o_cu, "Invalid O-CU-CP object");
+  // Attach the CU-CP NG handler so the gateway can dispatch per-AMF on SCTP COMM_UP.
+  for (auto& gw : n2_clients) {
+    gw->attach_cu_cp(o_cu->get_cu_cp().get_ng_handler());
+  }
 }
 
 ocucp::cu_cp& o_cu_cp_unit_impl::get_cu_cp()

@@ -86,18 +86,22 @@ o_cu_cp_unit ocudu::build_o_cu_cp(const o_cu_cp_unit_config& unit_cfg, o_cu_cp_u
 
   n2_clients.push_back(
       ocucp::create_n2_connection_client(generate_n2_client_config(cucp_unit_cfg.amf_config.no_core,
+                                                                   ocucp::uint_to_amf_index(0),
                                                                    cucp_unit_cfg.amf_config.amf,
                                                                    *dependencies.ngap_pcap,
                                                                    *dependencies.broker,
-                                                                   dependencies.executor_mapper->n2_rx_executor())));
+                                                                   dependencies.executor_mapper->n2_rx_executor(),
+                                                                   dependencies.executor_mapper->ctrl_executor())));
 
-  for (const auto& amf : cucp_unit_cfg.extra_amfs) {
+  for (unsigned i = 0, e = cucp_unit_cfg.extra_amfs.size(); i != e; ++i) {
     n2_clients.push_back(
         ocucp::create_n2_connection_client(generate_n2_client_config(cucp_unit_cfg.amf_config.no_core,
-                                                                     amf,
+                                                                     ocucp::uint_to_amf_index(i + 1),
+                                                                     cucp_unit_cfg.extra_amfs[i],
                                                                      *dependencies.ngap_pcap,
                                                                      *dependencies.broker,
-                                                                     dependencies.executor_mapper->n2_rx_executor())));
+                                                                     dependencies.executor_mapper->n2_rx_executor(),
+                                                                     dependencies.executor_mapper->ctrl_executor())));
   }
 
   for (unsigned i = 0, e = n2_clients.size(); i != e; ++i) {

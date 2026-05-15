@@ -548,16 +548,19 @@ ocucp::cu_cp_configuration ocudu::generate_cu_cp_config(const cu_cp_unit_config&
 }
 
 ocucp::n2_connection_client_config ocudu::generate_n2_client_config(bool                              no_core,
+                                                                    ocucp::amf_index_t                amf_index,
                                                                     const cu_cp_unit_amf_config_item& amf_cfg,
                                                                     dlt_pcap&                         pcap_writer,
                                                                     io_broker&                        broker,
-                                                                    task_executor&                    io_rx_executor)
+                                                                    task_executor&                    io_rx_executor,
+                                                                    task_executor&                    ctrl_exec)
 {
   using no_core_mode_t = ocucp::n2_connection_client_config::no_core;
   using network_mode_t = ocucp::n2_connection_client_config::network;
   using ngap_mode_t    = std::variant<no_core_mode_t, network_mode_t>;
 
-  ngap_mode_t mode = no_core ? ngap_mode_t{no_core_mode_t{}} : ngap_mode_t{network_mode_t{broker, io_rx_executor}};
+  ngap_mode_t mode =
+      no_core ? ngap_mode_t{no_core_mode_t{}} : ngap_mode_t{network_mode_t{broker, io_rx_executor, ctrl_exec, {}}};
   if (not no_core) {
     auto& nw_mode                  = std::get<network_mode_t>(mode);
     nw_mode.sctp.if_name           = "N2";
@@ -567,10 +570,12 @@ ocucp::n2_connection_client_config ocudu::generate_n2_client_config(bool        
     nw_mode.sctp.bind_addresses    = amf_cfg.bind_addrs;
     nw_mode.sctp.bind_interface    = amf_cfg.bind_interface;
     nw_mode.sctp.ppid              = NGAP_PPID;
+    // SCTP server-backed gateway requires non-blocking mode for the async multihomed connect.
+    nw_mode.sctp.non_blocking_mode = true;
     fill_sctp_network_gateway_config_socket_params(nw_mode.sctp, amf_cfg.sctp);
   }
 
-  return ocucp::n2_connection_client_config{pcap_writer, mode};
+  return ocucp::n2_connection_client_config{pcap_writer, amf_index, mode};
 }
 
 void ocudu::fill_cu_cp_worker_manager_config(worker_manager_config& config, const cu_cp_unit_config& unit_cfg)

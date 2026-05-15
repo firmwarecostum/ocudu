@@ -36,9 +36,11 @@ void amf_reconnection_routine::operator()(coro_context<async_task<bool>>& ctx)
 
   logger.info("TNL connection establishment to AMF failed. Retrying in {}...", reconnection_retry_time);
   CORO_AWAIT(async_wait_for(amf_tnl_connection_retry_timer, reconnection_retry_time));
-  while (not ngap.handle_amf_tnl_connection_request()) {
+  CORO_AWAIT_VALUE(tnl_connected, ngap.handle_amf_tnl_connection_request());
+  while (not tnl_connected) {
     logger.info("TNL connection establishment to AMF failed. Retrying in {}...", reconnection_retry_time);
     CORO_AWAIT(async_wait_for(amf_tnl_connection_retry_timer, reconnection_retry_time));
+    CORO_AWAIT_VALUE(tnl_connected, ngap.handle_amf_tnl_connection_request());
   }
 
   // Initiate NG Setup.

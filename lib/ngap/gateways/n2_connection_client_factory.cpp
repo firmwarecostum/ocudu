@@ -5,9 +5,13 @@
 #include "ocudu/ngap/gateways/n2_connection_client_factory.h"
 #include "ocudu/asn1/ngap/common.h"
 #include "ocudu/asn1/ngap/ngap_pdu_contents.h"
-#include "ocudu/gateways/sctp_network_client_factory.h"
+#include "ocudu/cu_cp/cu_cp_ng_handler.h"
+#include "ocudu/gateways/sctp_network_server_factory.h"
 #include "ocudu/ngap/ngap_message.h"
 #include "ocudu/pcap/dlt_pcap.h"
+#include "ocudu/support/async/async_task.h"
+#include "ocudu/support/error_handling.h"
+#include "ocudu/support/io/transport_layer_address.h"
 
 using namespace ocudu;
 using namespace ocucp;
@@ -95,31 +99,38 @@ private:
 class ngap_gateway_local_stub final : public n2_connection_client
 {
 public:
-  ngap_gateway_local_stub(dlt_pcap& pcap_) : pcap_writer(pcap_) {}
+  ngap_gateway_local_stub(amf_index_t amf_index_, dlt_pcap& pcap_) : amf_index(amf_index_), pcap_writer(pcap_) {}
 
-  std::unique_ptr<ngap_message_notifier>
-  handle_cu_cp_connection_request(std::unique_ptr<ngap_rx_message_notifier> cu_cp_rx_pdu_notifier) override
+  void attach_cu_cp(cu_cp_ng_handler& handler) override { cu_cp = &handler; }
+
+  async_task<bool> connect_to_amf() override
   {
-    class cu_cp_tx_pdu_notifier final : public ngap_message_notifier
-    {
-    public:
-      cu_cp_tx_pdu_notifier(ngap_gateway_local_stub& parent_) : parent(parent_) {}
-      ~cu_cp_tx_pdu_notifier() { parent.disconnect(); }
+    return launch_async([this](coro_context<async_task<bool>>& ctx) {
+      CORO_BEGIN(ctx);
 
-      [[nodiscard]] bool on_new_message(const ngap_message& msg) override
+      class cu_cp_tx_pdu_notifier final : public ngap_message_notifier
       {
-        parent.handle_tx_message(msg);
-        return true;
-      }
+      public:
+        cu_cp_tx_pdu_notifier(ngap_gateway_local_stub& parent_) : parent(parent_) {}
+        ~cu_cp_tx_pdu_notifier() override { parent.disconnect(); }
 
-    private:
-      ngap_gateway_local_stub& parent;
-    };
+        [[nodiscard]] bool on_new_message(const ngap_message& msg) override
+        {
+          parent.handle_tx_message(msg);
+          return true;
+        }
 
-    // Store Rx PDU notifier
-    cu_cp_rx_notifier = std::move(cu_cp_rx_pdu_notifier);
+      private:
+        ngap_gateway_local_stub& parent;
+      };
 
-    return std::make_unique<cu_cp_tx_pdu_notifier>(*this);
+      ocudu_assert(cu_cp != nullptr, "attach_cu_cp must be called before connect_to_amf");
+
+      // Local stub completes synchronously: deliver Tx to the CU-CP and store the Rx notifier we get back.
+      cu_cp_rx_notifier = cu_cp->handle_new_amf_connection(amf_index, std::make_unique<cu_cp_tx_pdu_notifier>(*this));
+
+      CORO_RETURN(cu_cp_rx_notifier != nullptr);
+    });
   }
 
 private:
@@ -197,69 +208,127 @@ private:
     cu_cp_rx_notifier->on_new_message(msg);
   }
 
+  const amf_index_t       amf_index;
   dlt_pcap&               pcap_writer;
   ocudulog::basic_logger& logger = ocudulog::fetch_basic_logger("CU-CP");
 
+  cu_cp_ng_handler*                         cu_cp = nullptr;
   std::unique_ptr<ngap_rx_message_notifier> cu_cp_rx_notifier;
 };
 
-/// \brief NGAP bridge that uses the IO broker to handle the SCTP connection
-class n2_sctp_gateway_client : public n2_connection_client
+/// \brief NGAP gateway over SCTP. The gNB acts as a client to the AMF: it only initiates outgoing TNL associations,
+/// it never accepts inbound ones. \ref sctp_network_server is used internally because it is the class that today
+/// exposes the non-blocking, multihomed \c sctp_connectx() driven by SCTP_COMM_UP notifications; it is expected to be
+/// renamed to a plain \c sctp_network_gateway once the legacy \c sctp_network_client is deprecated.
+class n2_sctp_gateway_client final : public n2_connection_client, public sctp_network_association_factory
 {
 public:
-  n2_sctp_gateway_client(io_broker&                           broker_,
-                         task_executor&                       io_rx_executor_,
+  n2_sctp_gateway_client(amf_index_t                          amf_index_,
+                         io_broker&                           broker,
+                         task_executor&                       io_rx_executor,
+                         task_executor&                       ctrl_exec_,
                          const sctp_network_connector_config& sctp_,
                          dlt_pcap&                            pcap_) :
-    broker(broker_), sctp_cfg(sctp_), pcap_writer(pcap_)
+    amf_index(amf_index_), sctp_cfg(sctp_), pcap_writer(pcap_)
   {
-    // Create SCTP network adapter.
-    sctp_gateway = create_sctp_network_client(sctp_network_client_config{sctp_cfg, broker, io_rx_executor_});
-    report_error_if_not(sctp_gateway != nullptr, "Failed to create SCTP gateway client.\n");
+    // SCTP server socket so that sctp_connectx() is non-blocking and the COMM_UP/CANT_STR_ASSOC notifications drive the
+    // async connect task.
+    sctp_server =
+        create_sctp_network_server(sctp_network_server_config{sctp_cfg, broker, io_rx_executor, ctrl_exec_, *this});
+    report_error_if_not(sctp_server != nullptr, "Failed to create N2 SCTP gateway");
   }
 
-  std::unique_ptr<ngap_message_notifier>
-  handle_cu_cp_connection_request(std::unique_ptr<ngap_rx_message_notifier> cu_cp_rx_pdu_notifier) override
+  ~n2_sctp_gateway_client() override
   {
-    ocudu_assert(cu_cp_rx_pdu_notifier != nullptr, "CU-CP Rx PDU notifier is null");
+    if (sctp_server) {
+      sctp_server->stop();
+    }
+  }
 
-    // Establish SCTP connection and register SCTP Rx message handler.
-    logger.debug("Establishing TNL connection to {} ({}:{})...",
+  void attach_cu_cp(cu_cp_ng_handler& handler) override
+  {
+    cu_cp = &handler;
+    // TODO: the gNB is purely a client at N2 and never accepts inbound associations from the AMF, but `listen()` is
+    // currently the only public entry point that subscribes the socket to the io_broker. Replace with a connect-only
+    // subscription path when the SCTP gateway is refactored.
+    bool result = sctp_server->listen();
+    report_error_if_not(result, "Failed to start N2 SCTP gateway");
+  }
+
+  async_task<bool> connect_to_amf() override
+  {
+    return launch_async([this, result = false](coro_context<async_task<bool>>& ctx) mutable {
+      CORO_BEGIN(ctx);
+      ocudu_assert(cu_cp != nullptr, "attach_cu_cp must be called before connect_to_amf");
+
+      logger.debug("Establishing TNL connection to {} ({}:{})...",
+                   sctp_cfg.dest_name,
+                   sctp_cfg.connect_addresses[0],
+                   sctp_cfg.connect_port);
+
+      CORO_AWAIT_VALUE(result, sctp_server->connect(resolve_dest_addrs()));
+
+      if (not result) {
+        logger.error("Failed to establish N2 TNL connection to AMF on {}:{}.",
+                     sctp_cfg.connect_addresses[0],
+                     sctp_cfg.connect_port);
+        CORO_EARLY_RETURN(false);
+      }
+
+      logger.info("{}: Connection to {} on {}:{} was established",
+                  sctp_cfg.if_name,
+                  sctp_cfg.dest_name,
+                  sctp_cfg.connect_addresses[0],
+                  sctp_cfg.connect_port);
+      fmt::print("{}: Connection to {} on {}:{} completed\n",
+                 sctp_cfg.if_name,
                  sctp_cfg.dest_name,
                  sctp_cfg.connect_addresses[0],
                  sctp_cfg.connect_port);
-    std::unique_ptr<sctp_association_sdu_notifier> sctp_sender = sctp_gateway->connect(
-        std::make_unique<sctp_to_n2_pdu_notifier>(std::move(cu_cp_rx_pdu_notifier), pcap_writer, logger));
 
-    if (sctp_sender == nullptr) {
-      logger.error("Failed to establish N2 TNL connection to AMF on {}:{}.",
-                   sctp_cfg.connect_addresses[0],
-                   sctp_cfg.connect_port);
+      CORO_RETURN(true);
+    });
+  }
+
+  // sctp_network_association_factory: called on SCTP_COMM_UP for both outgoing and (theoretical) incoming associations.
+  std::unique_ptr<sctp_association_sdu_notifier>
+  create(std::unique_ptr<sctp_association_sdu_notifier> sctp_send_notifier,
+         sctp_association_info /*assoc_info*/) override
+  {
+    ocudu_assert(cu_cp != nullptr, "attach_cu_cp must be called before SCTP associations come up");
+
+    // Wrap the SCTP sender into an N2 Tx notifier and deliver it to the CU-CP in exchange for the Rx notifier.
+    auto n2_sender = std::make_unique<n2_to_sctp_pdu_notifier>(std::move(sctp_send_notifier), pcap_writer, logger);
+
+    std::unique_ptr<ngap_rx_message_notifier> rx_notifier =
+        cu_cp->handle_new_amf_connection(amf_index, std::move(n2_sender));
+    if (rx_notifier == nullptr) {
       return nullptr;
     }
-    logger.info("{}: Connection to {} on {}:{} was established",
-                sctp_cfg.if_name,
-                sctp_cfg.dest_name,
-                sctp_cfg.connect_addresses[0],
-                sctp_cfg.connect_port);
-    fmt::print("{}: Connection to {} on {}:{} completed\n",
-               sctp_cfg.if_name,
-               sctp_cfg.dest_name,
-               sctp_cfg.connect_addresses[0],
-               sctp_cfg.connect_port);
 
-    // Return the Tx PDU notifier to the CU-CP.
-    return std::make_unique<n2_to_sctp_pdu_notifier>(std::move(sctp_sender), pcap_writer, logger);
+    return std::make_unique<sctp_to_n2_pdu_notifier>(std::move(rx_notifier), pcap_writer, logger);
   }
 
 private:
-  io_broker&                          broker;
+  std::vector<transport_layer_address> resolve_dest_addrs() const
+  {
+    std::vector<transport_layer_address> dest_addrs;
+    dest_addrs.reserve(sctp_cfg.connect_addresses.size());
+    for (const auto& addr_str : sctp_cfg.connect_addresses) {
+      transport_layer_address addr = transport_layer_address::create_from_string(addr_str);
+      addr.set_port(static_cast<uint16_t>(sctp_cfg.connect_port));
+      dest_addrs.push_back(addr);
+    }
+    return dest_addrs;
+  }
+
+  const amf_index_t                   amf_index;
   const sctp_network_connector_config sctp_cfg;
   dlt_pcap&                           pcap_writer;
   ocudulog::basic_logger&             logger = ocudulog::fetch_basic_logger("CU-CP");
 
-  // SCTP network adapter
-  std::unique_ptr<sctp_network_client> sctp_gateway;
+  cu_cp_ng_handler*                    cu_cp = nullptr;
+  std::unique_ptr<sctp_network_server> sctp_server;
 };
 
 } // namespace
@@ -269,10 +338,11 @@ ocudu::ocucp::create_n2_connection_client(const n2_connection_client_config& par
 {
   if (std::holds_alternative<n2_connection_client_config::no_core>(params.mode)) {
     // Connection to local AMF stub.
-    return std::make_unique<ngap_gateway_local_stub>(params.pcap);
+    return std::make_unique<ngap_gateway_local_stub>(params.amf_index, params.pcap);
   }
 
   // Connection to AMF through SCTP.
   const auto& nw_mode = std::get<n2_connection_client_config::network>(params.mode);
-  return std::make_unique<n2_sctp_gateway_client>(nw_mode.broker, nw_mode.io_rx_executor, nw_mode.sctp, params.pcap);
+  return std::make_unique<n2_sctp_gateway_client>(
+      params.amf_index, nw_mode.broker, nw_mode.io_rx_executor, nw_mode.ctrl_exec, nw_mode.sctp, params.pcap);
 }

@@ -51,7 +51,7 @@ struct cu_cp_test_env_params {
   {
     uint16_t amf_idx = 0;
     for (const auto& supported_tas : amf_config_) {
-      amf_configs.emplace(amf_idx, cu_cp_test_amf_config{supported_tas, create_mock_amf()});
+      amf_configs.emplace(amf_idx, cu_cp_test_amf_config{supported_tas, create_mock_amf(uint_to_amf_index(amf_idx))});
       amf_idx++;
     }
 

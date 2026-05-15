@@ -31,9 +31,11 @@ public:
   ocucp::cu_cp_operation_controller& get_operation_controller() override;
 
 private:
-  std::vector<std::unique_ptr<ocucp::n2_connection_client>> n2_clients;
+  // Declaration order matters: n2_clients must be destroyed BEFORE o_cu so the SCTP server's stop() and any pending Rx
+  // notifier teardown happen while the cu_cp_ng_handler is still alive.
   std::unique_ptr<e2_cu_metrics_connector_manager>          e2_metric_connector;
   std::unique_ptr<ocucp::o_cu_cp>                           o_cu;
+  std::vector<std::unique_ptr<ocucp::n2_connection_client>> n2_clients;
 };
 
 } // namespace ocudu

@@ -4,11 +4,15 @@
 
 #pragma once
 
+#include "ocudu/cu_cp/cu_cp_types.h"
 #include "ocudu/ngap/ngap.h"
 #include "ocudu/ran/plmn_identity.h"
+#include <memory>
 
 namespace ocudu {
 namespace ocucp {
+
+class ngap_rx_message_notifier;
 
 /// \brief Handler of the NG interface of the CU-CP.
 ///
@@ -26,6 +30,16 @@ public:
   /// \brief Get the state of the AMF connections.
   /// \return True if all AMFs are connected, false otherwise.
   virtual bool amfs_are_connected() = 0;
+
+  /// \brief Handle a newly established TNL association to a specific AMF.
+  ///
+  /// Invoked by the N2 gateway once an SCTP association is up. Tx/Rx notifiers are exchanged in a single call.
+  ///
+  /// \param amf_index The AMF this gateway serves.
+  /// \param n2_tx_pdu_notifier Notifier the CU-CP will use to push NGAP Tx PDUs into the gateway.
+  /// \return Notifier the gateway will use to forward NGAP PDUs from the AMF to the CU-CP.
+  virtual std::unique_ptr<ngap_rx_message_notifier>
+  handle_new_amf_connection(amf_index_t amf_index, std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier) = 0;
 };
 
 } // namespace ocucp

@@ -5,9 +5,12 @@
 #pragma once
 
 #include "ocudu/ngap/ngap.h"
+#include "ocudu/support/async/async_task.h"
 
 namespace ocudu {
 namespace ocucp {
+
+class cu_cp_ng_handler;
 
 /// This interface notifies the receeption of new NGAP messages over the NGAP interface.
 class ngap_rx_message_notifier
@@ -20,18 +23,24 @@ public:
   virtual void on_new_message(const ngap_message& msg) = 0;
 };
 
-/// Handler of N2 connection between CU-CP and AMF.
+/// Gateway used by the CU-CP to talk to an AMF over N2. The gNB is always a client to the AMF: it initiates the TNL
+/// association and never accepts inbound ones.
 class n2_connection_client
 {
 public:
   virtual ~n2_connection_client() = default;
 
-  /// Establish a new TNL association with an AMF.
+  /// \brief Attach the CU-CP NG handler. Must be called before \ref connect_to_amf.
   ///
-  /// \param cu_cp_rx_pdu_notifier Notifier that will be used to forward the NGAP PDUs sent by the AMF to the CU-CP.
-  /// \return Notifier that the CU-CP can use to send NGAP Tx PDUs to the AMF it connected to.
-  virtual std::unique_ptr<ngap_message_notifier>
-  handle_cu_cp_connection_request(std::unique_ptr<ngap_rx_message_notifier> cu_cp_rx_pdu_notifier) = 0;
+  /// On a successful association the gateway calls \ref cu_cp_ng_handler::handle_new_amf_connection on the attached
+  /// handler.
+  virtual void attach_cu_cp(cu_cp_ng_handler& handler) = 0;
+
+  /// \brief Initiate a new TNL association to the AMF.
+  ///
+  /// Returns true on a successful association, false otherwise. On success, the CU-CP handler has already been called
+  /// with the Tx notifier before the task completes.
+  virtual async_task<bool> connect_to_amf() = 0;
 };
 
 } // namespace ocucp

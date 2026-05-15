@@ -5,6 +5,7 @@
 #include "ngap_connection_handler.h"
 #include "ocudu/ngap/gateways/n2_connection_client.h"
 #include "ocudu/support/executors/task_executor.h"
+#include "ocudu/support/ocudu_assert.h"
 #include <thread>
 
 using namespace ocudu;
@@ -92,28 +93,41 @@ ngap_connection_handler::~ngap_connection_handler()
   handle_connection_loss_impl();
 }
 
-std::unique_ptr<ngap_message_notifier> ngap_connection_handler::connect_to_amf()
+async_task<bool> ngap_connection_handler::connect_to_amf()
 {
-  if (is_connected()) {
-    logger.warning("Reconnections to AMF not supported");
-    return nullptr;
-  }
+  return launch_async([this, success = false](coro_context<async_task<bool>>& ctx) mutable {
+    CORO_BEGIN(ctx);
 
-  // Create NGAP Rx PDU notifier.
-  rx_path_disconnected.reset();
-  std::unique_ptr<n2_rx_channel> rx_notifier =
-      std::make_unique<n2_rx_channel>(rx_pdu_handler, [this]() { handle_connection_loss(); });
+    if (is_connected()) {
+      logger.warning("Reconnections to AMF not supported");
+      CORO_EARLY_RETURN(false);
+    }
 
-  // Start N2 TNL association and get NGAP Tx PDU notifier.
-  tx_pdu_notifier = client_handler.handle_cu_cp_connection_request(std::move(rx_notifier));
-  if (tx_pdu_notifier == nullptr) {
-    return nullptr;
-  }
+    rx_path_disconnected.reset();
 
-  // Connection successful.
-  connected_flag = true;
+    CORO_AWAIT_VALUE(success, client_handler.connect_to_amf());
+    if (not success) {
+      CORO_EARLY_RETURN(false);
+    }
 
+    // On success, handle_new_amf_connection() has already stored the gateway-provided Tx notifier in tx_pdu_notifier.
+    CORO_RETURN(true);
+  });
+}
+
+std::unique_ptr<ngap_message_notifier> ngap_connection_handler::take_tx_notifier()
+{
+  ocudu_assert(connected_flag, "take_tx_notifier called before a successful connect");
   return std::make_unique<n2_tx_channel>(tx_pdu_notifier, logger);
+}
+
+std::unique_ptr<ngap_rx_message_notifier>
+ngap_connection_handler::handle_new_amf_connection(std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier)
+{
+  // Stash the gateway-provided Tx notifier so the awaiting connect_to_amf() coroutine can pick it up.
+  tx_pdu_notifier = std::move(n2_tx_pdu_notifier);
+  connected_flag  = true;
+  return std::make_unique<n2_rx_channel>(rx_pdu_handler, [this]() { handle_connection_loss(); });
 }
 
 void ngap_connection_handler::handle_connection_loss()

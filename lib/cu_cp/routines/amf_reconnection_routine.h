@@ -34,8 +34,9 @@ private:
   unique_timer              amf_tnl_connection_retry_timer;
   std::chrono::milliseconds reconnection_retry_time;
 
-  ngap_ng_setup_result result_msg = {};
-  bool                 success    = false;
+  ngap_ng_setup_result result_msg    = {};
+  bool                 success       = false;
+  bool                 tnl_connected = false;
 };
 
 } // namespace ocucp

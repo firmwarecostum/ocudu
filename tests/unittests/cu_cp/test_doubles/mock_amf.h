@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ocudu/cu_cp/cu_cp_types.h"
 #include "ocudu/ngap/gateways/n2_connection_client.h"
 #include "ocudu/ngap/ngap.h"
 
@@ -30,8 +31,9 @@ public:
   virtual void allow_reconnection() = 0;
 };
 
-/// Creates a mock AMF to interface with the CU-CP.
-std::unique_ptr<mock_amf> create_mock_amf();
+/// Creates a mock AMF to interface with the CU-CP. The mock dispatches \ref handle_new_amf_connection via the attached
+/// CU-CP NG handler with this index.
+std::unique_ptr<mock_amf> create_mock_amf(amf_index_t amf_index = uint_to_amf_index(0));
 
 } // namespace ocucp
 } // namespace ocudu

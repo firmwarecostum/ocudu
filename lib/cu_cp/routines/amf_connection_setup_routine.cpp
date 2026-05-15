@@ -39,7 +39,8 @@ void amf_connection_setup_routine::operator()(coro_context<async_task<bool>>& ct
     amf_index = ngap_it->first;
     ngap      = ngap_it->second;
 
-    if (not ngap->handle_amf_tnl_connection_request()) {
+    CORO_AWAIT_VALUE(tnl_connected, ngap->handle_amf_tnl_connection_request());
+    if (not tnl_connected) {
       CORO_EARLY_RETURN(false);
     }
 

@@ -60,6 +60,9 @@ public:
 
   bool amfs_are_connected() override;
 
+  std::unique_ptr<ngap_rx_message_notifier>
+  handle_new_amf_connection(amf_index_t amf_index, std::unique_ptr<ngap_message_notifier> n2_tx_pdu_notifier) override;
+
   // CU-UP handler.
   void handle_bearer_context_release_request(const cu_cp_bearer_context_release_request& msg) override;
   void handle_bearer_context_inactivity_notification(const cu_cp_inactivity_notification& msg) override;

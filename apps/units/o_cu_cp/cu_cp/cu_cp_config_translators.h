@@ -18,10 +18,12 @@ ocucp::cu_cp_configuration generate_cu_cp_config(const cu_cp_unit_config& cu_cfg
 
 /// Converts CU-CP configuration into N2 connection client.
 ocucp::n2_connection_client_config generate_n2_client_config(bool                              no_core,
+                                                             ocucp::amf_index_t                amf_index,
                                                              const cu_cp_unit_amf_config_item& amf_cfg,
                                                              dlt_pcap&                         pcap_writer,
                                                              io_broker&                        broker,
-                                                             task_executor&                    io_rx_executor);
+                                                             task_executor&                    io_rx_executor,
+                                                             task_executor&                    ctrl_exec);
 
 /// Fills the CU-CP worker manager parameters of the given worker manager configuration.
 void fill_cu_cp_worker_manager_config(worker_manager_config& config, const cu_cp_unit_config& unit_cfg);

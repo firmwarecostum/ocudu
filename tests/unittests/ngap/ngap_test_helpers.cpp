@@ -46,8 +46,14 @@ ngap_test::ngap_test() :
   cu_cp_notifier.connect_ngap(ngap->get_ngap_ue_context_removal_handler());
   n2_gw.attach_handler(&dummy_amf);
 
-  // Initiate N2 TNL association to AMF.
-  report_fatal_error_if_not(ngap->handle_amf_tnl_connection_request(), "Unable to establish connection to AMF");
+  // Wire the gateway to the NGAP via the dummy CU-CP NG handler, then initiate the N2 TNL association.
+  ng_handler.attach_ngap(*ngap);
+  n2_gw.attach_cu_cp(ng_handler);
+
+  async_task<bool>         tnl_task = ngap->handle_amf_tnl_connection_request();
+  lazy_task_launcher<bool> tnl_launcher(tnl_task);
+  report_fatal_error_if_not(tnl_task.ready(), "TNL connection task did not complete synchronously in test");
+  report_fatal_error_if_not(tnl_task.get(), "Unable to establish connection to AMF");
 }
 
 ngap_test::~ngap_test()
