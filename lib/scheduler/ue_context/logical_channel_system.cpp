@@ -77,10 +77,11 @@ logical_channel_system_utils::logical_channel_mapper::addmod_lc_and_lcg(du_ue_in
     auto& ul_row = get_row_id_entry(ue_index, lc_cfg.lc_group);
     if (ul_row == invalid_row_id) {
       // New LCG entry.
-      lcg_rid = ul_fields.insert(units::bytes{0}, invalid_slice_id, std::nullopt);
+      lcg_rid = ul_fields.insert(units::bytes{0}, invalid_slice_id, std::nullopt, lc_cfg.triggered_ul_grant);
       ul_row  = static_cast<uint16_t>(lcg_rid.value());
     } else {
-      lcg_rid = soa::row_id{ul_row};
+      lcg_rid                                                  = soa::row_id{ul_row};
+      ul_fields.at<ul_field_type::triggered_ul_grant>(lcg_rid) = lc_cfg.triggered_ul_grant;
     }
   }
 
@@ -736,9 +737,9 @@ void logical_channel_system::handle_mac_ce_indication(soa::row_id ue_row_id, con
   auto ce_rid = pending_ces.insert(mac_ce_context{ce, {}});
   ce_list.insert_after(tail, ce_rid);
   // Update sum of pending CE bytes.
-  unsigned                  new_ce_bytes         = ue_ctx.pending_ce_bytes + (ce.ce_lcid.is_var_len_ce()
-                                                                                  ? get_mac_sdu_required_bytes(ce.ce_lcid.sizeof_ce())
-                                                                                  : FIXED_SIZED_MAC_CE_SUBHEADER_SIZE + ce.ce_lcid.sizeof_ce());
+  unsigned new_ce_bytes = ue_ctx.pending_ce_bytes + (ce.ce_lcid.is_var_len_ce()
+                                                         ? get_mac_sdu_required_bytes(ce.ce_lcid.sizeof_ce())
+                                                         : FIXED_SIZED_MAC_CE_SUBHEADER_SIZE + ce.ce_lcid.sizeof_ce());
   static constexpr unsigned MAX_PENDING_CE_BYTES = 1U << 14U;
   ocudu_assert(new_ce_bytes <= MAX_PENDING_CE_BYTES, "Exceeded maximum pending CE bytes per UE");
   ue_ctx.pending_ce_bytes = new_ce_bytes;

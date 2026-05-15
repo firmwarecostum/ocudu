@@ -1312,11 +1312,18 @@ struct du_high_unit_rlc_config {
   du_high_unit_rlc_am_config am;
 };
 
+/// Proactive UL grant triggered in reaction to a DL allocation, per 5QI.
+struct du_high_unit_triggered_ul_grant_config {
+  uint8_t  delay_slots = 3;
+  unsigned grant_size  = 512;
+};
+
 /// QoS configuration
 struct du_high_unit_qos_config {
-  five_qi_t                  five_qi = uint_to_five_qi(9);
-  du_high_unit_rlc_config    rlc;
-  du_high_unit_f1u_du_config f1u_du;
+  five_qi_t                                             five_qi = uint_to_five_qi(9);
+  du_high_unit_rlc_config                               rlc;
+  du_high_unit_f1u_du_config                            f1u_du;
+  std::optional<du_high_unit_triggered_ul_grant_config> triggered_ul_grant;
 };
 
 /// DU high configuration.
