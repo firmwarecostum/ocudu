@@ -326,6 +326,8 @@ private:
       pusch_config.dc_position = {bwp_size_rb * NOF_SUBCARRIERS_PER_RB / 2};
     }
 
+    pusch_config.n_rapid = std::nullopt;
+
     // Resize data to accomodate the transport block.
     tx_data.resize(tbs.value());
     rx_data.resize(tbs.value());

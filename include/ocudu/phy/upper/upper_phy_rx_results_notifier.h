@@ -43,6 +43,8 @@ struct ul_pusch_results_data {
   /// \note The span is empty if the PDU does not contain PUSCH data or if the PDU could not be decoded successfully
   /// (i.e., CRC is KO).
   span<const uint8_t> payload;
+  /// Random Access Preamble Sequence Index (RAPID) associated to msgA on PUSCH (Release 16).
+  std::optional<unsigned> n_rapid;
 
   /// \brief Creates a data-related decoding result produced from a discarded transmission.
   /// \param[in] rnti_     Parameter \f$n_{RNTI}\f$ from TS38.211 Section 6.3.1.1.
