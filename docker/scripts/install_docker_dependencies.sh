@@ -69,7 +69,7 @@ install_docker_dependencies_fedora() {
     local -a pkgs=()
 
     local -a build_pkgs=(git ca-certificates)
-    local -a run_pkgs=(curl ntp)
+    local -a run_pkgs=(curl chrony)
 
     case "$mode" in
         build)
