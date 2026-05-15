@@ -420,12 +420,21 @@ ocucp::cu_cp_configuration ocudu::generate_cu_cp_config(const cu_cp_unit_config&
   out_cfg.xnap.procedure_timeout  = std::chrono::milliseconds{cu_cfg.xnap_config.procedure_timeout};
   out_cfg.xnap.reconnect_timer    = std::chrono::milliseconds{cu_cfg.xnap_config.reconnect_timer};
   out_cfg.xnap.no_connection_init = cu_cfg.xnap_config.no_connection_init;
-  for (const auto& xnap : cu_cfg.xnap_config.connections) {
-    ocucp::cu_cp_configuration::xnap_config xn_config{};
-    // TODO: support multiple XNAP peer addresses configuration for SCTP multihoming.
-    xn_config.peer_addr = transport_layer_address::create_from_string(xnap.peer_addrs.front());
-    xn_config.peer_addr.set_port(XNAP_PORT);
-    out_cfg.xnap.xnaps.push_back(xn_config);
+  uint32_t peer_idx               = 0;
+  uint16_t gw_idx                 = 0;
+  for (const auto& gw_cfg : cu_cfg.xnap_config.gateways) {
+    for (const auto& peer : gw_cfg.connections) {
+      ocucp::cu_cp_configuration::xnap_config xn_config{};
+      for (const auto& addr_str : peer.peer_addrs) {
+        transport_layer_address addr = transport_layer_address::create_from_string(addr_str);
+        addr.set_port(XNAP_PORT);
+        xn_config.peer_addrs.push_back(addr);
+      }
+      out_cfg.xnap.xnaps.push_back(xn_config);
+      out_cfg.xnap.peer_to_gateway[ocucp::uint_to_xnc_peer_index(peer_idx)] = ocucp::uint_to_xnc_gateway_index(gw_idx);
+      ++peer_idx;
+    }
+    ++gw_idx;
   }
 
   out_cfg.rrc.force_reestablishment_fallback = cu_cfg.rrc_config.force_reestablishment_fallback;
