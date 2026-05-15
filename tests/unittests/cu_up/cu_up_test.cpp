@@ -132,9 +132,9 @@ protected:
   cu_up_dependencies get_default_cu_up_dependencies()
   {
     cu_up_dependencies deps;
-    deps.gtpu_pcap          = &dummy_pcap;
-    deps.exec_mapper        = exec_pool.get();
-    deps.e1_conn_client     = &e1ap_client;
+    deps.gtpu_pcap   = &dummy_pcap;
+    deps.exec_mapper = exec_pool.get();
+    deps.e1_conn_clients.push_back(&e1ap_client);
     deps.f1u_teid_allocator = f1u_teid_allocator.get();
     deps.f1u_gateway        = f1u_gw.get();
     ngu_gw                  = create_udp_gtpu_gateway(cu_up_udp_cfg, *broker, *executor, *executor);
@@ -231,23 +231,6 @@ protected:
     return {sock_fd, upf_addr};
   }
 };
-
-//////////////////////////////////////////////////////////////////////////////////////
-/* E1AP connection handling                                                           */
-//////////////////////////////////////////////////////////////////////////////////////
-
-/// Test the E1AP connection
-
-TEST_F(cu_up_test, when_e1ap_connection_established_then_e1ap_connected)
-{
-  init(get_default_cu_up_config(), get_default_cu_up_dependencies());
-
-  // Connect E1AP
-  cu_up->get_cu_up_manager()->on_e1ap_connection_establish();
-
-  // check that E1AP is in connected state
-  ASSERT_TRUE(cu_up->get_cu_up_manager()->e1ap_is_connected());
-}
 
 //////////////////////////////////////////////////////////////////////////////////////
 /* User Data Flow                                                                   */

@@ -24,13 +24,14 @@ struct e1ap_ue_context {
   activity_notification_level_t activity_notification_level = activity_notification_level_t::invalid;
   e1ap_ue_logger                logger;
 
-  e1ap_ue_context(cu_up_ue_index_t              ue_index_,
+  e1ap_ue_context(e1ap_index_t                  e1_index,
+                  cu_up_ue_index_t              ue_index_,
                   gnb_cu_up_ue_e1ap_id_t        cu_up_ue_e1ap_id_,
                   gnb_cu_cp_ue_e1ap_id_t        cu_cp_ue_e1ap_id_,
                   activity_notification_level_t activity_notification_level_) :
     ue_ids({ue_index_, cu_up_ue_e1ap_id_, cu_cp_ue_e1ap_id_}),
     activity_notification_level(activity_notification_level_),
-    logger("CU-UP-E1", {ue_index_, cu_up_ue_e1ap_id_, cu_cp_ue_e1ap_id_})
+    logger("CU-UP-E1", {e1_index, ue_index_, cu_up_ue_e1ap_id_, cu_cp_ue_e1ap_id_})
   {
   }
 };
@@ -89,7 +90,8 @@ public:
     return ues.at(ue_index_to_ue_e1ap_id.at(ue_index));
   }
 
-  e1ap_ue_context& add_ue(cu_up_ue_index_t              ue_index,
+  e1ap_ue_context& add_ue(e1ap_index_t                  e1_index,
+                          cu_up_ue_index_t              ue_index,
                           gnb_cu_up_ue_e1ap_id_t        cu_up_ue_e1ap_id,
                           gnb_cu_cp_ue_e1ap_id_t        cu_cp_ue_e1ap_id,
                           activity_notification_level_t activity_notification_level)
@@ -106,9 +108,10 @@ public:
                  fmt::underlying(ue_index),
                  fmt::underlying(cu_up_ue_e1ap_id),
                  fmt::underlying(cu_cp_ue_e1ap_id));
-    ues.emplace(std::piecewise_construct,
-                std::forward_as_tuple(cu_up_ue_e1ap_id),
-                std::forward_as_tuple(ue_index, cu_up_ue_e1ap_id, cu_cp_ue_e1ap_id, activity_notification_level));
+    ues.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(cu_up_ue_e1ap_id),
+        std::forward_as_tuple(e1_index, ue_index, cu_up_ue_e1ap_id, cu_cp_ue_e1ap_id, activity_notification_level));
     ue_index_to_ue_e1ap_id.emplace(ue_index, cu_up_ue_e1ap_id);
     return ues.at(cu_up_ue_e1ap_id);
   }

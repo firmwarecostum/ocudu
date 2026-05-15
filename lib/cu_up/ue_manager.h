@@ -27,7 +27,7 @@ struct ue_manager_config {
 
 /// UE manager dependencies.
 struct ue_manager_dependencies {
-  e1ap_interface&               e1ap;
+  std::vector<e1ap_interface*>  e1aps;
   timer_manager&                timers;
   f1u_cu_up_gateway&            f1u_gw;
   ngu_session_manager&          ngu_session_mngr;
@@ -76,7 +76,7 @@ private:
   uint32_t                      max_nof_ues;
   const n3_interface_config&    n3_config;
   const cu_up_test_mode_config& test_mode_config;
-  e1ap_interface&               e1ap;
+  std::vector<e1ap_interface*>  e1aps;
   f1u_cu_up_gateway&            f1u_gw;
   ngu_session_manager&          ngu_session_mngr;
   cu_up_manager_pdcp_interface& cu_up_mngr_pdcp_if;

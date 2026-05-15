@@ -12,7 +12,7 @@ ue_manager::ue_manager(const ue_manager_config& config, const ue_manager_depende
   max_nof_ues(config.max_nof_ues),
   n3_config(config.n3_config),
   test_mode_config(config.test_mode_config),
-  e1ap(dependencies.e1ap),
+  e1aps(dependencies.e1aps),
   f1u_gw(dependencies.f1u_gw),
   ngu_session_mngr(dependencies.ngu_session_mngr),
   cu_up_mngr_pdcp_if(dependencies.cu_up_mngr_pdcp_if),
@@ -92,11 +92,12 @@ ue_context* ue_manager::add_ue(const ue_context_cfg& ue_cfg)
 
   // Create UE object
   std::unique_ptr<ue_context> new_ctx =
-      std::make_unique<ue_context>(new_idx,
+      std::make_unique<ue_context>(ue_cfg.e1_index,
+                                   new_idx,
                                    ue_cfg,
                                    n3_config,
                                    test_mode_config,
-                                   ue_context_dependencies{e1ap,
+                                   ue_context_dependencies{*e1aps[ue_cfg.e1_index],
                                                            std::move(ue_exec_mapper),
                                                            *ue_task_schedulers[new_idx],
                                                            ue_dl_timer_factory,

@@ -3,6 +3,7 @@
 
 #include "ocudu/support/async/fifo_async_task_scheduler.h"
 #include "ocudu/support/test_utils.h"
+#include "fmt/format.h"
 #include <chrono>
 
 using namespace ocudu;

@@ -25,6 +25,7 @@ enum class bearer_context_state_t { suspended, active };
 
 /// \brief UE context setup configuration
 struct ue_context_cfg {
+  e1ap_index_t                                 e1_index;
   security::sec_as_config                      security_info;
   activity_notification_level_t                activity_level;
   std::optional<std::chrono::seconds>          ue_inactivity_timeout;
@@ -53,13 +54,15 @@ struct ue_context_dependencies {
 class ue_context : public pdu_session_manager_ctrl
 {
 public:
-  ue_context(cu_up_ue_index_t              index_,
+  ue_context(e1ap_index_t                  e1_index_,
+             cu_up_ue_index_t              index_,
              ue_context_cfg                cfg_,
              const n3_interface_config&    n3_config_,
              const cu_up_test_mode_config& test_mode_config_,
              ue_context_dependencies       dependencies) :
     task_sched(dependencies.task_sched),
     ue_exec_mapper(std::move(dependencies.ue_exec_mapper)),
+    e1_index(e1_index_),
     index(index_),
     cfg(std::move(cfg_)),
     logger("CU-UP", {index_}),
@@ -172,6 +175,9 @@ public:
 
   [[nodiscard]] cu_up_ue_index_t get_index() const { return index; }
 
+  using cu_up_e1ap_index_t = unsigned; // TODO where to define this?
+  [[nodiscard]] cu_up_e1ap_index_t get_e1_index() const { return e1_index; }
+
   [[nodiscard]] const cu_up_ue_logger& get_logger() const { return logger; }
 
   fifo_async_task_scheduler& task_sched;
@@ -198,9 +204,10 @@ public:
   }
 
 private:
-  cu_up_ue_index_t index;
-  ue_context_cfg   cfg;
-  cu_up_ue_logger  logger;
+  cu_up_e1ap_index_t e1_index;
+  cu_up_ue_index_t   index;
+  ue_context_cfg     cfg;
+  cu_up_ue_logger    logger;
 
   e1ap_interface&          e1ap;
   pdu_session_manager_impl pdu_session_manager;

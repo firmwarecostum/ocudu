@@ -28,17 +28,17 @@ struct cu_up_manager_impl_config {
 
 /// CU-UP manager implementation dependencies.
 struct cu_up_manager_impl_dependencies {
-  std::atomic<bool>&         stop_command;
-  e1ap_interface&            e1ap;
-  gtpu_demux&                ngu_demux;
-  ngu_session_manager&       ngu_session_mngr;
-  gtpu_teid_pool&            n3_teid_allocator;
-  gtpu_teid_pool&            f1u_teid_allocator;
-  cu_up_executor_mapper&     exec_mapper;
-  f1u_cu_up_gateway&         f1u_gateway;
-  timer_manager&             timers;
-  dlt_pcap&                  gtpu_pcap;
-  fifo_async_task_scheduler& cu_up_task_scheduler;
+  std::atomic<bool>&           stop_command;
+  std::vector<e1ap_interface*> e1aps;
+  gtpu_demux&                  ngu_demux;
+  ngu_session_manager&         ngu_session_mngr;
+  gtpu_teid_pool&              n3_teid_allocator;
+  gtpu_teid_pool&              f1u_teid_allocator;
+  cu_up_executor_mapper&       exec_mapper;
+  f1u_cu_up_gateway&           f1u_gateway;
+  timer_manager&               timers;
+  dlt_pcap&                    gtpu_pcap;
+  fifo_async_task_scheduler&   cu_up_task_scheduler;
 };
 
 class cu_up_manager_impl final : public cu_up_manager
@@ -62,11 +62,6 @@ public:
   void schedule_cu_up_async_task(async_task<void> task) override;
 
   void schedule_ue_async_task(cu_up_ue_index_t ue_index, async_task<void> task) override;
-
-  // cu_up_e1ap_connection_notifier
-  void on_e1ap_connection_establish() override { e1ap_connected = true; }
-  void on_e1ap_connection_drop() override { e1ap_connected = false; }
-  bool e1ap_is_connected() override { return e1ap_connected; }
 
   size_t get_nof_ues() override { return ue_mng->get_nof_ues(); }
 
@@ -92,7 +87,7 @@ private:
   std::string    plmn;
 
   std::atomic<bool>&                    stop_command;
-  e1ap_interface&                       e1ap;
+  std::vector<e1ap_interface*>          e1aps;
   std::map<five_qi_t, cu_up_qos_config> qos;
   const network_interface_config        net_cfg;
   const n3_interface_config             n3_cfg;
@@ -105,7 +100,6 @@ private:
   ocudulog::basic_logger& logger = ocudulog::fetch_basic_logger("CU-UP", false);
 
   // Components
-  std::atomic<bool>           e1ap_connected = {false};
   std::unique_ptr<ue_manager> ue_mng;
 
   unique_timer statistics_report_timer;

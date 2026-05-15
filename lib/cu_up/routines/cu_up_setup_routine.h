@@ -15,11 +15,11 @@ namespace ocuup {
 class cu_up_setup_routine
 {
 public:
-  cu_up_setup_routine(gnb_cu_up_id_t                    cu_up_id_,
-                      std::string                       cu_up_name_,
-                      std::string                       plmn_,
-                      e1ap_connection_manager&          e1ap_conn_mng_,
-                      cu_up_e1_setup_complete_notifier* e1_setup_notifier_ = nullptr);
+  cu_up_setup_routine(gnb_cu_up_id_t                        cu_up_id_,
+                      std::string                           cu_up_name_,
+                      std::string                           plmn_,
+                      std::vector<e1ap_connection_manager*> e1ap_conn_mngs_,
+                      cu_up_e1_setup_complete_notifier*     e1_setup_notifier_ = nullptr);
 
   void operator()(coro_context<async_task<bool>>& ctx);
 
@@ -29,11 +29,12 @@ private:
   async_task<cu_up_e1_setup_response> start_cu_up_e1_setup_request();
   void                                handle_cu_up_e1_setup_response(const cu_up_e1_setup_response& resp);
 
-  gnb_cu_up_id_t                    cu_up_id;
-  std::string                       cu_up_name;
-  std::string                       plmn;
-  e1ap_connection_manager&          e1ap_conn_mng;
-  cu_up_e1_setup_complete_notifier* e1_setup_notifier;
+  gnb_cu_up_id_t                                  cu_up_id;
+  std::string                                     cu_up_name;
+  std::string                                     plmn;
+  std::vector<e1ap_connection_manager*>           e1ap_conn_mngs;
+  std::vector<e1ap_connection_manager*>::iterator e1ap_conn_mng;
+  cu_up_e1_setup_complete_notifier*               e1_setup_notifier;
 
   ocudulog::basic_logger& logger;
 

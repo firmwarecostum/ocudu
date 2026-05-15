@@ -34,11 +34,11 @@ protected:
     cu_up_exec_mapper = std::make_unique<dummy_cu_up_executor_mapper>(&worker);
 
     // Create UE cfg
-    ue_cfg = {security::sec_as_config{}, activity_notification_level_t::ue, std::chrono::seconds(0), {}, 1000000000};
+    ue_cfg = {0, security::sec_as_config{}, activity_notification_level_t::ue, std::chrono::seconds(0), {}, 1000000000};
 
     // create DUT object
     ue_mng = std::make_unique<ue_manager>(ue_manager_config{max_nof_ues, n3_config, test_mode_config},
-                                          ue_manager_dependencies{*e1ap,
+                                          ue_manager_dependencies{{e1ap.get()},
                                                                   timers,
                                                                   *f1u_gw,
                                                                   *ngu_session_mngr,

@@ -13,19 +13,20 @@
 #include "fmt/format.h"
 #include <string.h>
 
-namespace ocudu {
-namespace ocuup {
+namespace ocudu::ocuup {
 
 class e1ap_ue_log_prefix
 {
 public:
-  e1ap_ue_log_prefix(cu_up_ue_index_t       ue_index,
+  e1ap_ue_log_prefix(e1ap_index_t           e1_index,
+                     cu_up_ue_index_t       ue_index,
                      gnb_cu_up_ue_e1ap_id_t cu_up_ue_e1ap_id = gnb_cu_up_ue_e1ap_id_t::invalid,
                      gnb_cu_cp_ue_e1ap_id_t cu_cp_ue_e1ap_id = gnb_cu_cp_ue_e1ap_id_t::invalid)
   {
     fmt::memory_buffer buffer;
     fmt::format_to(std::back_inserter(buffer),
-                   "ue={}{}{}: ",
+                   "e1={} ue={}{}{}: ",
+                   e1_index,
                    fmt::underlying(ue_index),
                    cu_up_ue_e1ap_id != gnb_cu_up_ue_e1ap_id_t::invalid
                        ? fmt::format(" cu_up_ue_e1ap_id={}", fmt::underlying(cu_up_ue_e1ap_id))
@@ -43,8 +44,7 @@ private:
 
 using e1ap_ue_logger = prefixed_logger<e1ap_ue_log_prefix>;
 
-} // namespace ocuup
-} // namespace ocudu
+} // namespace ocudu::ocuup
 
 namespace fmt {
 

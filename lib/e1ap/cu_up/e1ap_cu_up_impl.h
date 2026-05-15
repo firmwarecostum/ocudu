@@ -21,7 +21,8 @@ class e1ap_event_manager;
 class e1ap_cu_up_impl final : public e1ap_interface
 {
 public:
-  e1ap_cu_up_impl(const e1ap_configuration&    e1ap_cfg_,
+  e1ap_cu_up_impl(e1ap_index_t                 index,
+                  const e1ap_configuration&    e1ap_cfg_,
                   e1_connection_client&        e1_client_handler_,
                   e1ap_cu_up_manager_notifier& cu_up_notifier_,
                   timer_manager&               timers_,
@@ -99,6 +100,7 @@ private:
   /// \param[in] msg The received unsuccessful outcome message.
   void handle_unsuccessful_outcome(const asn1::e1ap::unsuccessful_outcome_s& outcome);
 
+  e1ap_index_t             index;
   const e1ap_configuration e1ap_cfg;
   ocudulog::basic_logger&  logger;
 
