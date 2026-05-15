@@ -9,6 +9,7 @@
 #include "ocudu/adt/complex.h"
 #include "ocudu/support/ocudu_assert.h"
 #include <array>
+#include <bit>
 #include <numeric>
 
 namespace ocudu {
@@ -90,7 +91,9 @@ constexpr Integer log2_ceil(Integer value)
   if (value == 0) {
     return 0;
   }
-  return static_cast<Integer>(std::ceil(std::log2(static_cast<float>(value))));
+
+  // Returns the number of bits necessary to store value -1.
+  return std::__bit_width(value - 1);
 }
 
 /// \brief Converts a value in decibels to linear amplitude ratio
