@@ -102,11 +102,11 @@ static void fill_format4_parameters(fapi::ul_pucch_format_4_pdu_builder& builder
   // Format 4 specific parameters.
   // Both FAPI parameters initialCyclicShift (ref. TS 38.211 6.3.2.2.2) and m0PucchDmrsCyclicShift
   // (ref. TS 38.211 6.4.1.3.3.1) map to the same value.
-  const unsigned m0_format4 = get_pucch_format4_m0(mac_pdu.orthog_seq_idx);
+  const unsigned m0_format4 = get_pucch_format4_m0(static_cast<unsigned>(mac_pdu.occ_index));
 
   builder.set_modulation_parameters(mac_pdu.pi_2_bpsk)
       .set_hopping_parameters(mac_pdu.n_id_hopping)
-      .set_occ_parameters(mac_pdu.orthog_seq_idx, static_cast<uint8_t>(mac_pdu.n_sf_pucch_f4))
+      .set_occ_parameters(static_cast<uint8_t>(mac_pdu.occ_index), static_cast<uint8_t>(mac_pdu.occ_length))
       .set_scrambling_parameters(mac_pdu.n_id_scrambling)
       .set_dmrs_parameters(mac_pdu.additional_dmrs, mac_pdu.n_id_0_scrambling, m0_format4)
       .set_payload_parameters(uci_bits.sr_bits, units::bits(uci_bits.csi_part1_nof_bits), bit_len_harq);
@@ -168,10 +168,10 @@ void ocudu::fapi_adaptor::convert_pucch_mac_to_fapi(fapi::ul_pucch_pdu_builder& 
   const ofdm_symbol_range& symbols = mac_pdu.resources.symbols;
   builder.set_time_allocation_parameters(symbols);
 
-  const prb_interval& hop_prbs = mac_pdu.resources.second_hop_prbs;
   builder.set_time_allocation_parameters(mac_pdu.resources.symbols)
-      .set_hopping_information_parameters((hop_prbs.empty()) ? std::nullopt
-                                                             : std::optional<uint16_t>(hop_prbs.start()));
+      .set_hopping_information_parameters(mac_pdu.resources.second_hop_prb.has_value()
+                                              ? std::optional<uint16_t>(*mac_pdu.resources.second_hop_prb)
+                                              : std::nullopt);
 
   fill_format_parameters(builder, mac_pdu);
 }

@@ -378,7 +378,7 @@ void ocudu::test_pucch_consistency(const cell_configuration& cell_cfg, span<cons
         ASSERT_FALSE(f0_or_f1_grids[multiplexing_idx].collides(pucch_grants.first));
         f0_or_f1_grids[max_f0_or_f1_multiplexing].fill(pucch_grants.first);
         f0_or_f1_grids[multiplexing_idx].fill(pucch_grants.first);
-        if (not pucch.resources.second_hop_prbs.empty()) {
+        if (pucch.resources.second_hop_prb.has_value()) {
           ASSERT_FALSE(general_grid.collides(*pucch_grants.second));
           ASSERT_FALSE(f4_grids[max_f4_multiplexing].collides(*pucch_grants.second));
           ASSERT_FALSE(f0_or_f1_grids[multiplexing_idx].collides(*pucch_grants.second));
@@ -398,7 +398,7 @@ void ocudu::test_pucch_consistency(const cell_configuration& cell_cfg, span<cons
         ASSERT_FALSE(f0_or_f1_grids[multiplexing_idx].collides(pucch_grants.first));
         f0_or_f1_grids[max_f0_or_f1_multiplexing].fill(pucch_grants.first);
         f0_or_f1_grids[multiplexing_idx].fill(pucch_grants.first);
-        if (not pucch.resources.second_hop_prbs.empty()) {
+        if (pucch.resources.second_hop_prb.has_value()) {
           ASSERT_FALSE(general_grid.collides(*pucch_grants.second));
           ASSERT_FALSE(f4_grids[max_f4_multiplexing].collides(*pucch_grants.second));
           ASSERT_FALSE(f0_or_f1_grids[multiplexing_idx].collides(*pucch_grants.second));
@@ -408,7 +408,7 @@ void ocudu::test_pucch_consistency(const cell_configuration& cell_cfg, span<cons
       } break;
       case pucch_format::FORMAT_4: {
         const auto&    f4_params        = std::get<pucch_format_4>(pucch.format_params);
-        const unsigned multiplexing_idx = f4_params.orthog_seq_idx;
+        const unsigned multiplexing_idx = static_cast<unsigned>(f4_params.occ_index);
         // Multiplexed by orthogonal sequence index.
         // Check the general grid, the union of the F0/F1 grids and the F4 specific grid.
         // Write to both the F4 union grid and the F4 specific grid.
@@ -417,7 +417,7 @@ void ocudu::test_pucch_consistency(const cell_configuration& cell_cfg, span<cons
         ASSERT_FALSE(f4_grids[multiplexing_idx].collides(pucch_grants.first));
         f4_grids[max_f4_multiplexing].fill(pucch_grants.first);
         f4_grids[multiplexing_idx].fill(pucch_grants.first);
-        if (not pucch.resources.second_hop_prbs.empty()) {
+        if (pucch.resources.second_hop_prb.has_value()) {
           ASSERT_FALSE(general_grid.collides(*pucch_grants.second));
           ASSERT_FALSE(f0_or_f1_grids[max_f0_or_f1_multiplexing].collides(*pucch_grants.second));
           ASSERT_FALSE(f4_grids[multiplexing_idx].collides(*pucch_grants.second));
@@ -433,7 +433,7 @@ void ocudu::test_pucch_consistency(const cell_configuration& cell_cfg, span<cons
         ASSERT_FALSE(f0_or_f1_grids[max_f0_or_f1_multiplexing].collides(pucch_grants.first));
         ASSERT_FALSE(f4_grids[max_f4_multiplexing].collides(pucch_grants.first));
         general_grid.fill(pucch_grants.first);
-        if (not pucch.resources.second_hop_prbs.empty()) {
+        if (pucch.resources.second_hop_prb.has_value()) {
           ASSERT_FALSE(general_grid.collides(*pucch_grants.second));
           ASSERT_FALSE(f0_or_f1_grids[max_f0_or_f1_multiplexing].collides(*pucch_grants.second));
           ASSERT_FALSE(f4_grids[max_f4_multiplexing].collides(*pucch_grants.second));

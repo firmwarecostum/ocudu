@@ -18,7 +18,7 @@ pucch_info test_helpers::make_common_pucch_info(const bwp_configuration* bwp_cfg
                                                 unsigned                 pci,
                                                 pucch_format             format,
                                                 prb_interval             prbs,
-                                                prb_interval             second_hop_prbs,
+                                                std::optional<unsigned>  second_hop_prb,
                                                 ofdm_symbol_range        symbols,
                                                 uint8_t                  initial_cyclic_shift,
                                                 uint8_t                  time_domain_occ)
@@ -26,7 +26,7 @@ pucch_info test_helpers::make_common_pucch_info(const bwp_configuration* bwp_cfg
   pucch_info pucch_test{
       .crnti     = to_rnti(0x4601),
       .bwp_cfg   = bwp_cfg,
-      .resources = {.prbs = prbs, .symbols = symbols, .second_hop_prbs = second_hop_prbs},
+      .resources = {.prbs = prbs, .symbols = symbols, .second_hop_prb = second_hop_prb},
       .uci_bits  = {.harq_ack_nof_bits = 1U},
   };
 
@@ -51,8 +51,7 @@ pucch_info test_helpers::make_common_pucch_info(const bwp_configuration* bwp_cfg
 
 pucch_info test_helpers::make_ded_pucch_info(const cell_configuration& cell_cfg,
                                              const pucch_resource&     res,
-                                             pucch_uci_bits            uci_bits,
-                                             max_pucch_code_rate       max_code_rate)
+                                             pucch_uci_bits            uci_bits)
 {
   pucch_info info{.crnti    = to_rnti(0x4601),
                   .bwp_cfg  = &cell_cfg.params.ul_cfg_common.init_ul_bwp.generic_params,
@@ -64,10 +63,9 @@ pucch_info test_helpers::make_ded_pucch_info(const cell_configuration& cell_cfg,
   }
 
   info.resources = pucch_resources{
-      .prbs            = prb_interval::start_and_len(res.starting_prb, nof_prbs),
-      .symbols         = ofdm_symbol_range::start_and_len(res.starting_sym_idx, res.nof_symbols),
-      .second_hop_prbs = res.second_hop_prb.has_value() ? prb_interval::start_and_len(*res.second_hop_prb, nof_prbs)
-                                                        : prb_interval{0U, 0U},
+      .prbs           = prb_interval::start_and_len(res.starting_prb, nof_prbs),
+      .symbols        = ofdm_symbol_range::start_and_len(res.starting_sym_idx, res.nof_symbols),
+      .second_hop_prb = res.second_hop_prb,
   };
 
   switch (res.format) {
@@ -93,7 +91,6 @@ pucch_info test_helpers::make_ded_pucch_info(const cell_configuration& cell_cfg,
       info.format_params.emplace<pucch_format_2>(pucch_format_2{
           .n_id_scrambling   = cell_cfg.params.pci,
           .n_id_0_scrambling = cell_cfg.params.pci,
-          .max_code_rate     = max_code_rate,
       });
     } break;
     case pucch_format::FORMAT_3: {
@@ -103,7 +100,6 @@ pucch_info test_helpers::make_ded_pucch_info(const cell_configuration& cell_cfg,
           .slot_repetition   = pucch_repetition_tx_slot::no_multi_slot,
           .n_id_scrambling   = cell_cfg.params.pci,
           .pi_2_bpsk         = false,
-          .max_code_rate     = max_code_rate,
           .additional_dmrs   = false,
           .n_id_0_scrambling = cell_cfg.params.pci,
       });
@@ -116,9 +112,8 @@ pucch_info test_helpers::make_ded_pucch_info(const cell_configuration& cell_cfg,
           .slot_repetition   = pucch_repetition_tx_slot::no_multi_slot,
           .n_id_scrambling   = cell_cfg.params.pci,
           .pi_2_bpsk         = false,
-          .max_code_rate     = max_code_rate,
-          .orthog_seq_idx    = static_cast<uint8_t>(f4.occ_index),
-          .n_sf_pucch_f4     = static_cast<pucch_format_4_sf>(f4.occ_length),
+          .occ_index         = f4.occ_index,
+          .occ_length        = f4.occ_length,
           .additional_dmrs   = false,
           .n_id_0_scrambling = cell_cfg.params.pci,
       });
@@ -137,7 +132,7 @@ bool ocudu::pucch_info_match(const pucch_info& expected, const pucch_info& test)
       expected.crnti == test.crnti && *expected.bwp_cfg == *test.bwp_cfg && expected.format() == test.format();
   is_equal = is_equal && expected.resources.prbs == test.resources.prbs &&
              expected.resources.symbols == test.resources.symbols &&
-             expected.resources.second_hop_prbs == test.resources.second_hop_prbs;
+             expected.resources.second_hop_prb == test.resources.second_hop_prb;
 
   if (not is_equal) {
     return false;
@@ -167,8 +162,7 @@ bool ocudu::pucch_info_match(const pucch_info& expected, const pucch_info& test)
     case pucch_format::FORMAT_2: {
       const auto& expected_f = std::get<pucch_format_2>(expected.format_params);
       const auto& test_f     = std::get<pucch_format_2>(test.format_params);
-      is_equal               = is_equal && expected_f.max_code_rate == test_f.max_code_rate &&
-                 expected_f.n_id_scrambling == test_f.n_id_scrambling &&
+      is_equal               = is_equal && expected_f.n_id_scrambling == test_f.n_id_scrambling &&
                  expected_f.n_id_0_scrambling == test_f.n_id_0_scrambling &&
                  expected.uci_bits.sr_bits == test.uci_bits.sr_bits &&
                  expected.uci_bits.harq_ack_nof_bits == test.uci_bits.harq_ack_nof_bits &&
@@ -183,23 +177,21 @@ bool ocudu::pucch_info_match(const pucch_info& expected, const pucch_info& test)
                  expected.uci_bits.csi_part1_nof_bits == test.uci_bits.csi_part1_nof_bits &&
                  expected_f.slot_repetition == test_f.slot_repetition &&
                  expected_f.n_id_scrambling == test_f.n_id_scrambling && expected_f.pi_2_bpsk == test_f.pi_2_bpsk &&
-                 expected_f.max_code_rate == test_f.max_code_rate &&
                  expected_f.additional_dmrs == test_f.additional_dmrs &&
                  expected_f.n_id_0_scrambling == test_f.n_id_0_scrambling;
     } break;
     case pucch_format::FORMAT_4: {
       const auto& expected_f = std::get<pucch_format_4>(expected.format_params);
       const auto& test_f     = std::get<pucch_format_4>(test.format_params);
-      is_equal =
-          is_equal && expected_f.group_hopping == test_f.group_hopping &&
-          expected_f.n_id_hopping == test_f.n_id_hopping && expected.uci_bits.sr_bits == test.uci_bits.sr_bits &&
-          expected.uci_bits.harq_ack_nof_bits == test.uci_bits.harq_ack_nof_bits &&
-          expected.uci_bits.csi_part1_nof_bits == test.uci_bits.csi_part1_nof_bits &&
-          expected_f.slot_repetition == test_f.slot_repetition &&
-          expected_f.n_id_scrambling == test_f.n_id_scrambling && expected_f.pi_2_bpsk == test_f.pi_2_bpsk &&
-          expected_f.max_code_rate == test_f.max_code_rate && expected_f.orthog_seq_idx == test_f.orthog_seq_idx &&
-          expected_f.n_sf_pucch_f4 == test_f.n_sf_pucch_f4 && expected_f.additional_dmrs == test_f.additional_dmrs &&
-          expected_f.n_id_0_scrambling == test_f.n_id_0_scrambling;
+      is_equal               = is_equal && expected_f.group_hopping == test_f.group_hopping &&
+                 expected_f.n_id_hopping == test_f.n_id_hopping && expected.uci_bits.sr_bits == test.uci_bits.sr_bits &&
+                 expected.uci_bits.harq_ack_nof_bits == test.uci_bits.harq_ack_nof_bits &&
+                 expected.uci_bits.csi_part1_nof_bits == test.uci_bits.csi_part1_nof_bits &&
+                 expected_f.slot_repetition == test_f.slot_repetition &&
+                 expected_f.n_id_scrambling == test_f.n_id_scrambling && expected_f.pi_2_bpsk == test_f.pi_2_bpsk &&
+                 expected_f.occ_index == test_f.occ_index && expected_f.occ_length == test_f.occ_length &&
+                 expected_f.additional_dmrs == test_f.additional_dmrs &&
+                 expected_f.n_id_0_scrambling == test_f.n_id_0_scrambling;
     } break;
     default: {
       return false;

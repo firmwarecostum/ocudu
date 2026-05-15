@@ -6,20 +6,17 @@
 
 #include "ocudu/ran/pucch/pucch_configuration.h"
 #include "ocudu/ran/pucch/pucch_mapping.h"
-#include "ocudu/ran/pucch/pucch_uci_bits.h"
 #include "ocudu/ran/resource_allocation/ofdm_symbol_range.h"
 #include "ocudu/ran/resource_allocation/rb_interval.h"
+#include <optional>
 
 namespace ocudu {
 
-/// PUCCH Format 4 spreading factor.
-enum class pucch_format_4_sf { sf2 = 2, sf4 = 4 };
-
 /// PRBs and symbols used for PUCCH resources.
 struct pucch_resources {
-  prb_interval      prbs;
-  ofdm_symbol_range symbols;
-  prb_interval      second_hop_prbs{0U, 0U};
+  prb_interval            prbs;
+  ofdm_symbol_range       symbols;
+  std::optional<unsigned> second_hop_prb;
 };
 
 /// Scheduler output for PUCCH Format 0.
@@ -50,8 +47,7 @@ struct pucch_format_2 {
   /// \f$n_{ID}\f$ as per Section 6.3.2.5.1 and 6.3.2.6.1, TS 38.211.
   uint16_t n_id_scrambling;
   /// \f$N_{ID}^0\f$ as per TS 38.211, Section 6.4.1.3.2.1.
-  uint16_t            n_id_0_scrambling;
-  max_pucch_code_rate max_code_rate;
+  uint16_t n_id_0_scrambling;
 };
 
 /// Scheduler output for PUCCH Format 3.
@@ -63,7 +59,6 @@ struct pucch_format_3 {
   pucch_repetition_tx_slot slot_repetition;
   uint16_t                 n_id_scrambling;
   bool                     pi_2_bpsk;
-  max_pucch_code_rate      max_code_rate;
   /// DMRS parameters.
   bool     additional_dmrs;
   uint16_t n_id_0_scrambling;
@@ -78,14 +73,10 @@ struct pucch_format_4 {
   pucch_repetition_tx_slot slot_repetition;
   uint16_t                 n_id_scrambling;
   bool                     pi_2_bpsk;
-  max_pucch_code_rate      max_code_rate;
-  /// \c occ-Index as per TS 38.331, or equivalent to index \f$n\f$ in Tables 6.3.2.6.3-1/2, TS 38.211. Only for PUCCH
-  /// Format 4.
-  uint8_t orthog_seq_idx;
-  /// Spreading Factor \f$N_{SF}^{PUCCH,4}\f$, as per TS 38.211, Section 6.3.2.6.3. Only for PUCCH Format 4.
-  /// TODO: check if this corresponds to \ref pucch_f4_occ_len.
-  pucch_format_4_sf n_sf_pucch_f4;
-
+  /// Index \f$n\f$ in Tables 6.3.2.6.3-1/2, TS 38.211.
+  pucch_f4_occ_idx occ_index;
+  /// Spreading Factor \f$N_{SF}^{PUCCH,4}\f$, as per Section 6.3.2.6.3, TS 38.211.
+  pucch_f4_occ_len occ_length;
   /// DMRS parameters.
   bool     additional_dmrs;
   uint16_t n_id_0_scrambling;
