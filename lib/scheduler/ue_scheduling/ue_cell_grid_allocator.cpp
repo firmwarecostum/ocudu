@@ -159,7 +159,7 @@ ue_cell_grid_allocator::allocate_dl_grant(const ue_newtx_dl_grant_request& reque
     return make_unexpected(dl_alloc_failure_cause::other);
   }
 
-  // Setup a DL grant.
+  // Set up a DL grant.
   auto result = setup_dl_grant_builder(request.user, sched_ctxt.value(), std::nullopt);
   if (not result.has_value()) {
     return make_unexpected(result.error());
@@ -498,7 +498,7 @@ ue_cell_grid_allocator::allocate_ul_grant(const ue_newtx_ul_grant_request& reque
     return make_unexpected(alloc_status::skip_ue);
   }
 
-  // Setup a UL grant.
+  // Set up a UL grant.
   auto result = setup_ul_grant_builder(request.user, *sched_ctxt, std::nullopt);
   if (not result.has_value()) {
     return make_unexpected(result.error());
@@ -600,10 +600,12 @@ ue_cell_grid_allocator::setup_ul_grant_builder(const slice_ue&                  
   // Allocate UE UL HARQ.
   if (not is_retx) {
     // It is a new tx.
-    h_ul =
-        ue_cc.harqs
-            .alloc_ul_harq(pusch_alloc.slot, expert_cfg.max_nof_ul_harq_retxs, user.ran_slice_id() == SRB_RAN_SLICE_ID)
-            .value();
+    h_ul = ue_cc.harqs
+               .alloc_ul_harq(pusch_alloc.slot,
+                              expert_cfg.max_nof_ul_harq_retxs,
+                              std::nullopt,
+                              user.ran_slice_id() == SRB_RAN_SLICE_ID)
+               .value();
     ocudu_assert(h_ul.has_value(), "Failed to allocate UL HARQ");
   } else {
     // It is a retx.
