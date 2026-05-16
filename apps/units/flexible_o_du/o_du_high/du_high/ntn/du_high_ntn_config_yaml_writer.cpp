@@ -36,6 +36,11 @@ void ocudu::fill_ntn_config_in_yaml_schema(YAML::Node& node, const du_high_unit_
     ntn_node["ntn_ul_sync_validity_dur"] = config.ntn_ul_sync_validity_dur.value();
   }
 
+  // kmac (TS 38.331 NTN-Config-r17 kmac-r17).
+  if (config.k_mac) {
+    ntn_node["k_mac"] = config.k_mac.value();
+  }
+
   if (config.ta_info) {
     YAML::Node ta_info_node;
     ta_info_node["ta_common"]               = config.ta_info.value().ta_common;

@@ -198,6 +198,11 @@ static void configure_cli11_ntn_args(CLI::App& app, du_high_unit_cell_ntn_config
       ->capture_default_str()
       ->check(CLI::IsMember({5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 120, 180, 240, 900}));
 
+  // kmac (TS 38.331 NTN-Config-r17 kmac-r17): offset between DL and UL frame timing.
+  app.add_option("--k_mac", config.k_mac, "Scheduling offset kmac [slots] (TS 38.331 kmac-r17)")
+      ->capture_default_str()
+      ->check(CLI::Range(1u, 512u));
+
   // Epoch time.
   static epoch_time_t epoch_time;
   CLI::App* epoch_time_subcmd = add_subcommand(app, "epoch_time", "Epoch time for the NTN assistance information");
