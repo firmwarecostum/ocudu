@@ -3,6 +3,7 @@
 
 #pragma once
 
+#define _GNU_SOURCE
 #include "ocudu/adt/expected.h"
 #include "ocudu/support/resource_usage/resource_usage_metrics.h"
 #include <chrono>
