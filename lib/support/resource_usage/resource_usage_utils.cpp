@@ -21,7 +21,11 @@ static cpu_snapshot to_snapshot(const ::rusage& rusg)
 expected<cpu_snapshot, int> resource_usage_utils::cpu_usage_now(rusage_measurement_type type)
 {
   ::rusage ret;
-  if (::getrusage(static_cast<__rusage_who_t>(type), &ret) == 0) {
+#if defined(__linux__) && !defined(__GLIBC__)
+    if (::getrusage(static_cast<int>(type), &ret) == 0) {
+#else
+    if (::getrusage(static_cast<__rusage_who_t>(type), &ret) == 0) {
+#endif
     return to_snapshot(ret);
   }
   return make_unexpected(errno);
