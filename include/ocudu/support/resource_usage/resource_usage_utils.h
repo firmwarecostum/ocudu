@@ -6,6 +6,7 @@
 #include "ocudu/adt/expected.h"
 #include "ocudu/support/resource_usage/resource_usage_metrics.h"
 #include <chrono>
+#include <cstdint>
 #include <sys/resource.h>
 
 namespace ocudu {
