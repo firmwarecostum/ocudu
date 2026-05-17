@@ -14,6 +14,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <thread>
+#include <sys/time.h>
 #include <unistd.h>
 
 using namespace ocudu;
