@@ -15,7 +15,15 @@ using rusage_meas_clock      = std::chrono::high_resolution_clock;
 using rusage_meas_time_point = rusage_meas_clock::time_point;
 using rusage_meas_duration   = std::chrono::nanoseconds;
 
-enum class rusage_measurement_type : __rusage_who_t { THREAD = RUSAGE_THREAD, PROCESS = RUSAGE_SELF, NONE };
+#if defined(__GLIBC__)
+enum class rusage_measurement_type : __rusage_who_t { 
+#else
+enum class rusage_measurement_type : int { 
+#endif
+    THREAD = RUSAGE_THREAD, 
+    PROCESS = RUSAGE_SELF, 
+    NONE 
+};
 
 /// Used to store the CPU time used by a thread or process, as well as process's memory usage.
 struct measurements {
