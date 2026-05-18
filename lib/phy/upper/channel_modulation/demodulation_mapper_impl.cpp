@@ -10,6 +10,12 @@
 #include "ocudu/support/math/math_utils.h"
 #include "ocudu/support/ocudu_assert.h"
 
+#include <math.h>
+
+#ifndef M_SQRT2f32
+#define M_SQRT2f32 1.414213562373095048801688724209698079f
+#endif
+
 using namespace ocudu;
 
 static log_likelihood_ratio demod_BPSK_symbol(cf_t z, float noise_var, float range_limit)
