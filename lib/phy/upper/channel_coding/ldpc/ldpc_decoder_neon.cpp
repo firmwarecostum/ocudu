@@ -10,6 +10,7 @@
 #include "neon_support.h"
 #include "ocudu/ocuduvec/circ_shift.h"
 #include "ocudu/ocuduvec/copy.h"
+#include <linux/stddef.h>
 
 using namespace ocudu;
 using namespace ocudu::ldpc;
