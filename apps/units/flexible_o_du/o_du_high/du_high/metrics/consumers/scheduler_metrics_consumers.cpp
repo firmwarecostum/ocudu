@@ -7,6 +7,10 @@
 #include "ocudu/support/format/custom_formattable.h"
 #include "ocudu/support/format/fmt_to_c_str.h"
 
+#ifndef iszero
+#define iszero(x) ((x) == 0)
+#endif
+
 using namespace ocudu;
 
 static void print_sched_header()
