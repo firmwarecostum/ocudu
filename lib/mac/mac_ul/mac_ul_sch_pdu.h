@@ -15,6 +15,10 @@
 #include "ocudu/support/ocudu_assert.h"
 #include "fmt/std.h"
 
+#include <endian.h>
+#include <stdio.h>
+#include <stdint.h>
+
 namespace ocudu {
 
 class mac_ul_sch_subpdu
