@@ -7,6 +7,10 @@
 #include "json_generators/generator_helpers.h"
 #include "ocudu/scheduler/scheduler_metrics.h"
 
+#ifndef iszero
+#define iszero(x) ((x) == 0)
+#endif
+
 using namespace ocudu;
 using namespace app_helpers;
 using namespace json_generators;
