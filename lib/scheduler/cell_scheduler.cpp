@@ -5,6 +5,10 @@
 #include "cell_scheduler.h"
 #include "logging/scheduler_metrics_handler.h"
 
+#ifndef iszero
+#define iszero(x) ((x) == 0)
+#endif
+
 using namespace ocudu;
 
 cell_scheduler::cell_scheduler(const scheduler_expert_config&                  sched_cfg,
