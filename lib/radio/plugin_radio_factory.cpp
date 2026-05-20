@@ -104,7 +104,14 @@ std::unique_ptr<radio_factory> ocudu::create_plugin_radio_factory(std::string dr
   char*       err         = nullptr;
   std::string plugin_name = "libocudu_radio_" + driver_name + ".so";
 
-  void* dl_handle = ::dlopen(plugin_name.c_str(), RTLD_NOW + RTLD_DEEPBIND + RTLD_GLOBAL);
+#if defined(__linux__) && defined(__GLIBC__)
+    int flags = RTLD_NOW | RTLD_DEEPBIND | RTLD_GLOBAL;
+#else
+    int flags = RTLD_NOW | RTLD_GLOBAL; // musl and other platforms
+#endif
+
+void* dl_handle = ::dlopen(plugin_name.c_str(), flags);
+
   if (dl_handle == nullptr) {
     err = ::dlerror();
     if (err != nullptr) {
