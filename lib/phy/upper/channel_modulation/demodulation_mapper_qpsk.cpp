@@ -12,6 +12,12 @@
 #include "neon_helpers.h"
 #endif // __ARM_NEON
 
+#include <math.h>
+
+#ifndef M_SQRT2f32
+#define M_SQRT2f32 1.414213562373095048801688724209698079f
+#endif
+
 using namespace ocudu;
 
 // Maximum (absolute) value considered for quantization. Larger values will be clipped.
