@@ -17,6 +17,10 @@
 #include "ocudu/phy/support/resource_grid_reader.h"
 #include "ocudu/support/transform_optional.h"
 
+#ifndef __attribute_noinline__
+#define __attribute_noinline__ __attribute__((noinline))
+#endif
+
 using namespace ocudu;
 
 static const unsigned& MAX_LAYERS   = port_channel_estimator_average_impl::MAX_LAYERS;
