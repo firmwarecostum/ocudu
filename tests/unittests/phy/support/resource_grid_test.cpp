@@ -9,6 +9,10 @@
 #include "ocudu/support/ocudu_test.h"
 #include <random>
 
+#ifndef iszero
+#define iszero(x) ((x) == 0)
+#endif
+
 using namespace ocudu;
 
 static std::mt19937 rgen(0);
