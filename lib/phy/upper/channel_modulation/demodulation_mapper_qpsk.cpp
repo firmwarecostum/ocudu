@@ -11,6 +11,7 @@
 #ifdef __ARM_NEON
 #include "neon_helpers.h"
 #endif // __ARM_NEON
+#include <math.h>
 
 using namespace ocudu;
 
