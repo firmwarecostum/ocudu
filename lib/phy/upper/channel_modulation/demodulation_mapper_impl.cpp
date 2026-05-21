@@ -9,6 +9,7 @@
 #include "demodulation_mapper_qpsk.h"
 #include "ocudu/support/math/math_utils.h"
 #include "ocudu/support/ocudu_assert.h"
+#include <math.h>
 
 using namespace ocudu;
 
@@ -18,7 +19,7 @@ static log_likelihood_ratio demod_BPSK_symbol(cf_t z, float noise_var, float ran
   if (!(noise_var > 0)) {
     return 0;
   }
-  float l_value = 2.0F * M_SQRT2f32 * (std::real(z) + std::imag(z)) / noise_var;
+  float l_value = 2.0F * M_SQRT2 * (std::real(z) + std::imag(z)) / noise_var;
   return log_likelihood_ratio::quantize(l_value, range_limit);
 }
 
