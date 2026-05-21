@@ -6,7 +6,9 @@
 #include "ocudu/adt/expected.h"
 #include "ocudu/support/resource_usage/resource_usage_metrics.h"
 #include <chrono>
-#include <sys/resource.h>
+extern "C" {
+    #include <sys/resource.h>
+}
 
 namespace ocudu {
 namespace resource_usage_utils {
