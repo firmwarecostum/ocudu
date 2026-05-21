@@ -11,6 +11,7 @@
 #ifdef __ARM_NEON
 #include "neon_helpers.h"
 #endif // __ARM_NEON
+#include <math.h>
 
 using namespace ocudu;
 
@@ -48,7 +49,7 @@ static void demod_QPSK_avx2(log_likelihood_ratio* llr, const cf_t* symbol, const
   __m256 rcp_noise_3_ = _mm256_permute2f128_ps(rcp_noise_2, rcp_noise_3, 0x31);
 
   // Calculate l_value.
-  __m256 GAIN      = _mm256_set1_ps(2.0F * M_SQRT2f32);
+  __m256 GAIN      = _mm256_set1_ps(2.0F * M_SQRT2);
   __m256 l_value_0 = _mm256_mul_ps(_mm256_mul_ps(GAIN, symbols_0), rcp_noise_0_);
   __m256 l_value_1 = _mm256_mul_ps(_mm256_mul_ps(GAIN, symbols_1), rcp_noise_1_);
   __m256 l_value_2 = _mm256_mul_ps(_mm256_mul_ps(GAIN, symbols_2), rcp_noise_2_);
@@ -88,7 +89,7 @@ static void demod_QPSK_neon(log_likelihood_ratio* llr, const cf_t* symbol, const
   // float32x4_t   rcp_noise_3_ = noise_rep_1.val[1];
 
   // Calculate l_value.
-  float32x4_t GAIN      = vdupq_n_f32(2.0F * M_SQRT2f32);
+  float32x4_t GAIN      = vdupq_n_f32(2.0F * M_SQRT2);
   float32x4_t l_value_0 = vmulq_f32(vmulq_f32(GAIN, symbols_0), noise_rep_0.val[0]);
   float32x4_t l_value_1 = vmulq_f32(vmulq_f32(GAIN, symbols_1), noise_rep_0.val[1]);
   float32x4_t l_value_2 = vmulq_f32(vmulq_f32(GAIN, symbols_2), noise_rep_1.val[0]);
@@ -107,7 +108,7 @@ static log_likelihood_ratio demod_QPSK_symbol(float x, float noise_var)
   if (!(noise_var > 0)) {
     return log_likelihood_ratio(0);
   }
-  float l_value = 2.0F * M_SQRT2f32 * x / noise_var;
+  float l_value = 2.0F * M_SQRT2 * x / noise_var;
   return log_likelihood_ratio::quantize(l_value, RANGE_LIMIT_FLOAT);
 }
 
